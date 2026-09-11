@@ -1,0 +1,126 @@
+================================================================
+  BOM Matcher  —  版本對照摘要
+================================================================
+  v0.03  2026-06-15  ADATA E-BOM 格式輸出、PCB圖片、ITEM/RC/EC 欄位
+  v0.02  2026-06-12  GUI 介面 / 自動偵測 / 雙擊執行
+  v0.01  2026-06-12  首版發布（完整 CLI 功能實作）
+================================================================
+
+
+================================================================
+  v0.03  2026-06-15
+================================================================
+
+【新增】
+
+▌ ADATA E-BOM 表頭 (rows 1-8)
+  - Row 1 : 公司名稱「ADATA Technology Co., Ltd.」（Arial 14 粗體）
+  - Row 2 : 標題「M.2 SSD E-BOM」（Arial 24 粗體，水平置中）
+  - Row 3 : PCB板號 / 發行序號
+  - Row 4 : PCB料號 / 發行(改版)日期
+  - Row 5 : RC/EC NO. / 目前版次（預設 0）
+  - Row 6 : PCB供應商
+  - Row 7 : PCB 規格 / 環保等級（含 □A□S■H□G 勾選標記）
+  - Row 8 : Support IC Type
+  - 左欄標籤 Arial 14、右欄標籤 標楷體 14，仿製原版格式
+
+▌ PCB 圖片嵌入 (_add_pcb_image)
+  - 圖片放置區：Excel rows 9-35（TwoCellAnchor：A9→O35）
+  - 自動偵測同目錄 pcb.jpg / pcb.jpeg / pcb.png（大小寫均可）
+  - 找不到圖片時顯示警告但不中止
+  - GUI 新增「PCB 圖片」欄位及「瀏覽…」按鈕
+
+▌ ITEM 欄 (A 欄)
+  - 從 1 開始流水序號，含 NC 項目
+
+▌ RC/EC 欄 (B 欄)
+  - P/N 首筆料號（';'分隔時取第一個）前四碼判斷：
+      6103xxxx → RC（電阻）
+      6104xxxx → RC（電容）
+      6900xxxx → RC（錫膏）
+      其餘 / 無 P/N → EC
+
+▌ BOM 欄位結構調整
+  Row 36 表頭：Item | RC/EC | P/N | Description | Qty
+               | Location-Top Layer | Location-Bottom Layer(G:O 合併)
+  Row 37 起資料行：Bottom Layer 欄合併留空
+
+▌ P/N 替代料格式
+  - v0.02：「61041115 (或 61041238)」
+  - v0.03：「61041115;61041238」（對齊 ADATA E-BOM 模板）
+  - 含 ';' 的行仍顯示綠底色碼
+
+▌ 其他
+  - 取消格線（showGridLines = False）
+  - CLI 在 text_bom 同目錄自動偵測 pcb.jpg/png
+
+【修改】
+  - write_excel() 新增 pcb_img 參數
+  - 新函式：classify_rcec() / _find_pcb_img()
+  - VERSION → "0.03"
+
+
+================================================================
+  v0.02  2026-06-12
+================================================================
+
+【新增】
+
+▌ GUI 介面（BomMatcherApp）
+  - 雙擊 / 無參數執行 → 自動啟動 GUI
+  - 欄位：Text BOM / Excel DB / 輸出 BOM，各附「瀏覽…」
+
+▌ 自動偵測（_auto_detect）
+  - 1 個 TXT → 自動填入；2+ 個 → 日誌列出，提示手動選
+  - 1 個 XLSX → 自動填入；2+ 個 → 日誌列出，提示手動選
+
+▌ 輸出路徑預設
+  - 格式：BOM_<BOM原檔名>_<YYYYMMDD>.xlsx
+
+▌ 執行日誌
+  - 黑底控制台，print() 重導向至 Text widget（thread-safe）
+  - 完成後 messagebox 提示
+
+▌ 非阻塞執行（daemon thread）
+
+▌ CLI 相容（tkinter 延遲匯入）
+
+【修改】
+  - main() → main() + _cli()
+  - VERSION → "0.02"
+
+
+================================================================
+  v0.01  2026-06-12
+================================================================
+
+【新增功能 — 完整首版】
+
+▌ parse_text_bom   : Altium tab BOM 解析，多行 Reference 合併
+▌ read_db          : Excel 零件資料庫讀取，支援指定 sheet
+▌ is_nc / strip_nc : NC 偵測與剝除（多種格式）
+▌ find_matches     : 分型比對（C/R/L/其他），邊界安全搜尋
+  - 防 1uF⊂0.1uF、0Ω⊂300Ω、2KΩ⊂402KΩ
+  - TVS 特殊優先、Token fallback
+▌ write_excel      : 黃底NC、綠底替代料、藍底Total
+▌ CLI              : text_bom / excel_db / -o / -s
+
+
+================================================================
+  使用說明
+================================================================
+
+安裝依賴：
+    pip install pandas openpyxl pillow
+
+GUI（雙擊 or 無參數）：
+    python bom_matcher.py
+    ─ 自動偵測同目錄 *.txt / *.xlsx / pcb.jpg|png
+
+CLI：
+    python bom_matcher.py BOM.txt parts_db.xlsx
+    python bom_matcher.py BOM.txt parts_db.xlsx -o result.xlsx
+
+輸出檔名格式建議：
+    BOM_<PCB型號>_<YYYYMMDD>_<板卡料號>.xlsx
+    例：BOM_SM2268XT_20260615_M2P42280SMH086.xlsx

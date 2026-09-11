@@ -1,0 +1,98 @@
+================================================================
+  BOM Matcher  —  版本對照摘要
+================================================================
+  v1.0  2026-06-12  首版發布（完整功能實作）
+================================================================
+
+
+================================================================
+  v1.0  2026-06-12
+================================================================
+
+【新增功能 — 完整首版】
+
+▌ 解析 (parse_text_bom)
+  - 支援 Altium tab-delimited text BOM 格式
+  - 自動合併 double-tab 開頭的多行 Reference 接續行
+  - 輸出 {item, qty, ref, part, fp} 結構化 dict 清單
+
+▌ 零件資料庫讀取 (read_db)
+  - 支援 .xlsx 任意 sheet（-s 參數指定，預設第一張）
+  - 自動修剪 P/N 與 Description 欄位空白
+
+▌ NC 處理 (is_nc / strip_nc)
+  - 以 '/' 或 '\\' 分段，任一段大小寫無感等於 'NC' → 標記為 NC
+  - 支援各種 NC 位置：前置 (NC/JTAG…)、後置 (10pF/NC)、
+    雙斜線 (220nF//NC)、多段 (25MHz/6pF/NC)
+  - strip_nc 去除所有 NC 段，保留其餘值
+
+▌ 料號比對 (find_matches)
+  依 footprint 首字元分派策略：
+
+  C（電容）
+    - 先確認 package（0201/0402/0603…）出現於 Description
+    - 再以 value_in_desc() 邊界安全搜尋電容值
+    - 防止 '1uF' 誤匹 '0.1uF'（look-behind 排除 '.'）
+
+  R（電阻）
+    - 先確認 package
+    - 以 value_in_desc() 同時嘗試原始值與正規化值
+      (300R→300Ω / 10K→10KΩ / 1M→1MΩ，trailing tag _1% 等先剝除)
+    - 防止 '0Ω' 誤匹 '300Ω'/'10Ω'，'2KΩ' 誤匹 '402KΩ'
+
+  L（電感 / Bead）
+    - 先確認 package
+    - 含 'BEAD'：提取 ohm 數值，比對 Description 中 NΩ + BEAD
+    - 含 uH：比對 Description 中 uH 值 + 'INDUCTOR'
+
+  其他（IC / 二極體 / 接頭等）
+    ① 特殊 TVS（part == 'TVS'）：必須在直接名稱比對之前處理，
+       避免 'TVS' 作為子字串誤命中所有 H/TVS 行；
+       TVS0201 footprint → 排除 SOD 系描述，只保留非 SOD 的 TVS 料
+    ② 直接邊界安全名稱比對（value_in_desc）
+    ③ Token fallback：以 [_\-/\s] 切割，取長度 ≥4 的 token，
+       用簡單 substring 搜尋（允許前綴匹配如 SM2268XT→SM2268XT2F）
+
+▌ 替代料處理
+  - 同一搜尋條件命中多筆 → 第一筆為主料，其餘以「(或 XXXXX)」附加於 P/N
+
+▌ 查無料號 fallback
+  - P/N 留空，Description 保留「值 + 封裝」
+  - 封裝顯示：已知標準 package code 優先顯示；
+    非標準（如 S-ZTFL-201610TG 誤抽 0161）則顯示完整 footprint 字串
+
+▌ Excel 輸出 (write_excel)
+  - 欄位：P/N / Description / Qty / Location-Top Layer
+  - 黃底：NC 項目
+  - 綠底：含替代料（P/N 有「或」）
+  - 藍底 Total 列：所有 Qty 直加（含 NC）
+  - 圖例說明附於表格末端
+  - 凍結首行、欄寬自動設定
+
+▌ CLI (main)
+  - 位置參數：text_bom, excel_db
+  - -o / --output：指定輸出路徑（預設：BOM_<原檔名>_<日期>.xlsx）
+  - -s / --sheet ：指定資料庫 sheet 名稱
+
+【已知限制（v1.0）】
+  - BAT54KFILM 等資料庫中無完整型號的二極體無法自動比對
+    → P/N 留空，供人工補填
+  - 替代料識別僅依資料庫命中順序排列，不做電氣規格優先排序
+  - 同一 Part 值跨不同 footprint 的替代料（如 MT8133NDAR 對應
+    SY8883ADFC）需人工確認，程式不主動跨型號推算替代
+
+================================================================
+  使用說明
+================================================================
+
+安裝依賴：
+    pip install pandas openpyxl
+
+基本用法：
+    python bom_matcher.py BOM.txt parts_db.xlsx
+
+指定輸出路徑：
+    python bom_matcher.py BOM.txt parts_db.xlsx -o output/BOM_result.xlsx
+
+指定 DB sheet：
+    python bom_matcher.py BOM.txt parts_db.xlsx -s 工作表4

@@ -1,0 +1,301 @@
+================================================================
+  BOM Matcher  —  版本對照摘要
+================================================================
+  v0.05  2026-06-18  修正框線消失問題（合併儲存格邊界框線）
+  v0.04  2026-06-16  修正 Excel Merge 衝突 / 程式檔加版號
+  v0.03  2026-06-15  ADATA E-BOM 格式輸出、PCB圖片、ITEM/RC/EC 欄位
+  v0.02  2026-06-12  GUI 介面 / 自動偵測 / 雙擊執行
+  v0.01  2026-06-12  首版發布（完整 CLI 功能實作）
+================================================================
+
+
+================================================================
+  v0.05  2026-06-18
+================================================================
+
+【修正】
+
+▌ 框線消失問題（核心修正：合併儲存格的邊界框線分配方式）
+
+  根本原因：
+    Excel 渲染合併儲存格的框線時，是依據範圍內「每一個儲存格」各自
+    的框線設定來決定該邊界是否畫線，而不是只看左上角錨點儲存格。
+    v0.04 的 _cell() 只把框線設定在合併範圍的錨點儲存格上
+    （例如 K7:L8 合併時，只設定 K7 的框線），導致：
+      - 合併範圍「下邊界」「右邊界」對應的儲存格（K8、L8 等）
+        完全沒有框線 → 該邊界在 Excel 中完全不顯示。
+    這正是三個回報問題的共同成因：
+
+    (a) 表格最右邊和底部框線消失
+        → PCB 圖片區（rows 9-35）原本完全沒有設定任何框線
+          （只設定了列高，未畫框）；資料區與表尾也只用統一的
+          thin 框線，且最後一列沒有「封閉」用的 medium 底線。
+
+    (b) 環保等級所在列(row 8)下方框線消失
+        → K7:L8、M7:O8 為兩列合併儲存格，框線只設在 K7/M7，
+          下邊界儲存格 K8/L8/M8/N8/O8 完全沒有框線。
+
+    (c) Total 列與 Approval 列之間框線消失
+        → 表尾（Remark / 圖例 / Approval）區域沒有延續外框
+          medium 框線，造成 Total 列以下視覺上「斷開」。
+
+  修正方式：
+    - 新增 _set_box() 通用函式，取代舊有的 _cell()：
+        merge_cells() 之後，將傳入的 Border 依範圍邊界正確
+        分配到每個邊界儲存格：
+          左邊界(c==c1)的所有列 → 套用 border.left
+          右邊界(c==c2)的所有列 → 套用 border.right
+          上邊界(r==r1)的所有欄 → 套用 border.top
+          下邊界(r==r2)的所有欄 → 套用 border.bottom
+        確保合併範圍無論幾列幾欄，四個邊都能在 Excel 正確顯示。
+    - PCB 圖片區（rows 9-35）：A欄(左)、O欄(右)逐列套用
+      medium 外框，使整份文件外框連續不中斷。
+    - 表尾區（Remark/圖例/Approval）：全部列改用 B_FOOT
+      （medium 左右框線）以延續外框；最後一列額外套用
+      medium 下框線，做為整張表格的「封閉收尾」。
+    - 環保等級 (K7:L8 / M7:O8)：改用 _set_box() 一次性處理，
+      下邊界 (row 8) 自動取得 medium 框線。
+
+  驗證結果（程式內建自我檢查）：
+    ✓ 所有列 A欄左框線 / O欄右框線：完整無缺漏
+    ✓ 最後一列（row 100）：A:O 全部 bottom=medium（封閉表格）
+    ✓ row 8（環保等級）：K/L/M/N/O 全部 bottom=medium
+    ✓ Total 列(91) 至 Approval 列(99~100)：A-left / O-right
+      連續為 medium，無斷線
+    ✓ 合併儲存格衝突數：0（與 v0.04 一致，未退步）
+
+【新增函式】
+  - _set_box(ws, rng, value, font, align, fill, border)
+      通用合併/單一儲存格寫入函式，框線分配對 Excel 100% 相容
+  - B_OUTER / B_TOPCAP / B_BOTCAP / B_SIDES / B_INNER /
+    B_BODY_L / B_FOOT / B_LASTROW
+      預先定義的外框框線樣式常數，全文件共用以確保視覺一致
+
+【移除】
+  - 舊版 _cell() 輔助函式（已被 _set_box() 取代）
+
+
+================================================================
+  v0.04  2026-06-16
+================================================================
+
+【修正】
+
+▌ Excel Merge 衝突修正（主因：Excel 開啟時出現「已進行修復」警告）
+
+  根本原因：
+    v0.03 的 _build_header() 對 rows 3-8 跑同一個 loop，
+    在 row 8 時建立了 K8:L8 與 M8:O8；
+    loop 結束後又對 row 7 執行：
+        unmerge('K7:L7') → merge('K7:L8')   ← 此時 K8:L8 殘留未清除
+        unmerge('M7:O7') → merge('M7:O8')   ← 此時 M8:O8 殘留未清除
+    結果 XML 中同時存在：
+        K7:L8  ↔  K8:L8   (子集衝突)
+        M7:O8  ↔  M8:O8   (子集衝突)
+    Excel 偵測到衝突 → 觸發自動修復。
+
+  修正方式：
+    - 將 rows 7-8 完全移出 loop，單獨處理
+    - Row 7 左側：merge A7:C7、D7:J7
+    - Row 8 左側：merge A8:C8、D8:J8
+    - 右側一次建立 K7:L8 與 M7:O8（2-row span，不做 unmerge）
+    - 完全消除 unmerge/re-merge 操作
+  驗證結果：Conflicting merge pairs = 0
+
+▌ PCB 圖片嵌入方式改為 simple cell anchor
+  - 移除 TwoCellAnchor / AnchorMarker 用法（相容性較差）
+  - 改用 ws.add_image(img, 'A9') + 顯式設定 width/height
+  - 依原始圖片長寬比等比縮放至 height=700px
+  - 可避免 TwoCellAnchor XML 格式不符 Excel 規範的問題
+
+【新增】
+
+▌ 程式檔案命名加入版號
+  - 輸出程式檔名格式：bom_matcher_<版號>.py
+  - 例：bom_matcher_0.04.py
+  - 後續每版依此規則命名
+
+
+================================================================
+  v0.03  2026-06-15
+================================================================
+
+【新增】
+
+▌ ADATA E-BOM 表頭 (rows 1-8)
+  - Row 1 : 公司名稱「ADATA Technology Co., Ltd.」（Arial 14 粗體）
+  - Row 2 : 標題「M.2 SSD E-BOM」（Arial 24 粗體，水平置中）
+  - Row 3 : PCB板號 / 發行序號
+  - Row 4 : PCB料號 / 發行(改版)日期
+  - Row 5 : RC/EC NO. / 目前版次（預設 0）
+  - Row 6 : PCB供應商
+  - Row 7 : PCB 規格 / 環保等級（含 □A□S■H□G 勾選標記）
+  - Row 8 : Support IC Type
+  - 左欄標籤 Arial 14、右欄標籤 標楷體 14，仿製原版格式
+  - 所有欄位帶 thin border，供手動填入
+
+▌ PCB 圖片嵌入 (_add_pcb_image)
+  - 圖片放置區：Excel rows 9-35（0-indexed anchor 8→34, col A→O）
+  - 搜尋邏輯：同目錄自動偵測 pcb.jpg / pcb.jpeg / pcb.png
+    （大小寫均可：PCB.png / pcb.jpg / PCB.JPG 皆可識別）
+  - 使用 TwoCellAnchor 確保圖片隨欄列縮放對齊
+  - 找不到圖片時顯示警告但不中止程式
+  - GUI 新增「PCB 圖片」欄位及「瀏覽…」按鈕
+
+▌ ITEM 欄 (A 欄)
+  - 從 1 開始的流水序號，涵蓋所有項目（含 NC 項目）
+
+▌ RC/EC 欄 (B 欄)
+  - 判斷依據：P/N 首筆料號（;分隔時取第一個）的前四碼
+      6103xxxx → RC（電阻）
+      6104xxxx → RC（電容）
+      6900xxxx → RC（錫膏）
+      其餘 / 無 P/N → EC（電子零件）
+
+▌ 欄位結構調整（對齊 ADATA E-BOM 模板）
+  BOM 表頭行 (Row 36)：
+      A: Item | B: RC/EC | C: P/N | D: Description
+      E: Qty  | F: Location-Top Layer | G:O: Location-Bottom Layer (merged)
+  資料行 (Row 37 起)：
+      Bottom Layer 欄 (G:O) 合併，目前留空
+
+▌ P/N 替代料格式更改
+  - v0.02：「61041115 (或 61041238)」
+  - v0.03：「61041115;61041238」（分號分隔，對齊 ADATA E-BOM 模板格式）
+  - 色碼保留：含 ';' 的 P/N 行仍顯示綠底
+
+▌ 輸出格式改善
+  - 取消格線（showGridLines = False），符合 ADATA 模板風格
+  - 圖例說明：說明文字更新（含 ';' 格式說明）
+
+▌ CLI PCB 圖片自動偵測
+  - 無 -p 參數時，自動在 text_bom 同目錄尋找 pcb.jpg/png
+
+【修改】
+  - write_excel() 新增 pcb_img 參數
+  - classify_rcec() 新函式，供 write_excel() 呼叫
+  - _find_pcb_img() 新輔助函式
+  - VERSION 更新為 "0.03"
+
+
+================================================================
+  v0.02  2026-06-12
+================================================================
+
+【新增】
+
+▌ GUI 介面（BomMatcherApp）
+  - 雙擊 bom_matcher.py 或無參數執行時，自動啟動 GUI
+  - 三個路徑欄位：Text BOM / Excel DB / 輸出 BOM，各附「瀏覽…」按鈕
+  - 檔案對話框預設目錄為目前工作目錄（CWD）
+
+▌ 自動偵測（_auto_detect）
+  - 啟動時掃描 CWD 下的 *.txt 與 *.xlsx 檔案
+  - 剛好 1 個 TXT → 自動填入 Text BOM 欄位
+  - 剛好 1 個 XLSX → 自動填入 Excel DB 欄位
+  - 找到 2 個以上 → 在日誌區列出所有檔名，提示手動選擇
+  - 找不到 → 提示手動選擇
+
+▌ 輸出路徑預設
+  - 選定 BOM TXT 後自動產生預設輸出名稱
+    格式：BOM_<BOM原檔名>_<YYYYMMDD>.xlsx
+  - 使用者可手動覆蓋或另存
+
+▌ 執行日誌（scrolledtext）
+  - 黑底控制台風格文字區，即時顯示 parse / match / write 進度
+  - print() 輸出透過 _StdoutToText 重導向至日誌區（thread-safe）
+  - 執行完成後彈出 messagebox 確認視窗
+
+▌ 非阻塞執行
+  - 點擊「▶ 執行」後以 daemon thread 執行處理，GUI 不凍結
+  - 執行期間「▶ 執行」按鈕 disabled，完成後恢復
+
+▌ CLI 相容
+  - 有傳入 sys.argv 參數時走 _cli()，行為與 v0.01 完全相同
+  - tkinter 為延遲匯入（try/except）：
+    即使在無 GUI 環境（如 CI 伺服器）帶參數執行也不會出錯
+
+【修改】
+  - main() 拆分為 main()（模式判斷） + _cli()（CLI 執行）
+  - VERSION 更新為 "0.02"
+
+
+================================================================
+  v0.01  2026-06-12
+================================================================
+
+【新增功能 — 完整首版】
+
+▌ 解析 (parse_text_bom)
+  - 支援 Altium tab-delimited text BOM 格式
+  - 自動合併 double-tab 開頭的多行 Reference 接續行
+  - 輸出 {item, qty, ref, part, fp} 結構化 dict 清單
+
+▌ 零件資料庫讀取 (read_db)
+  - 支援 .xlsx 任意 sheet（-s 參數指定，預設第一張）
+  - 自動修剪 P/N 與 Description 欄位空白
+
+▌ NC 處理 (is_nc / strip_nc)
+  - 以 '/' 或 '\\' 分段，任一段大小寫無感等於 'NC' → 標記為 NC
+  - 支援各種 NC 位置：前置 (NC/JTAG…)、後置 (10pF/NC)、
+    雙斜線 (220nF//NC)、多段 (25MHz/6pF/NC)
+  - strip_nc 去除所有 NC 段，保留其餘值
+
+▌ 料號比對 (find_matches)
+  依 footprint 首字元分派策略：
+
+  C（電容）
+    - 先確認 package（0201/0402/0603…）出現於 Description
+    - 再以 value_in_desc() 邊界安全搜尋電容值
+    - 防止 '1uF' 誤匹 '0.1uF'（look-behind 排除 '.'）
+
+  R（電阻）
+    - 先確認 package
+    - 以 value_in_desc() 同時嘗試原始值與正規化值
+      (300R→300Ω / 10K→10KΩ / 1M→1MΩ，trailing tag _1% 等先剝除)
+    - 防止 '0Ω' 誤匹 '300Ω'/'10Ω'，'2KΩ' 誤匹 '402KΩ'
+
+  L（電感 / Bead）
+    - 先確認 package
+    - 含 'BEAD'：提取 ohm 數值，比對 Description 中 NΩ + BEAD
+    - 含 uH：比對 Description 中 uH 值 + 'INDUCTOR'
+
+  其他（IC / 二極體 / 接頭等）
+    ① 特殊 TVS（part == 'TVS'）：必須在直接名稱比對之前處理，
+       避免 'TVS' 作為子字串誤命中所有 H/TVS 行
+    ② 直接邊界安全名稱比對（value_in_desc）
+    ③ Token fallback：以 [_\-/\s] 切割，取長度 ≥4 的 token
+
+▌ 替代料處理
+  - 同一搜尋條件命中多筆 → 第一筆為主料，其餘以「(或 XXXXX)」附加於 P/N
+
+▌ 查無料號 fallback
+  - P/N 留空，Description 保留「值 + 封裝」
+
+▌ Excel 輸出 (write_excel)
+  - 欄位：P/N / Description / Qty / Location-Top Layer
+  - 黃底：NC 項目；綠底：含替代料；藍底 Total 列：所有 Qty 直加
+  - 圖例說明附於表格末端；凍結首行
+
+▌ CLI (main)
+  - text_bom / excel_db / -o / -s
+
+
+================================================================
+  使用說明
+================================================================
+
+安裝依賴：
+    pip install pandas openpyxl pillow
+
+GUI（雙擊 or 無參數）：
+    python bom_matcher_0.05.py
+    ─ 自動偵測同目錄 *.txt / *.xlsx / pcb.jpg|png
+
+CLI：
+    python bom_matcher_0.05.py BOM.txt parts_db.xlsx
+    python bom_matcher_0.05.py BOM.txt parts_db.xlsx -o result.xlsx
+
+輸出檔名格式建議：
+    BOM_<PCB型號>_<YYYYMMDD>.xlsx
+    例：BOM_SM2268XT_20260618.xlsx

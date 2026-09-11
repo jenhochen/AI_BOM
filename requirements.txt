@@ -1,0 +1,17 @@
+# BOM Matcher v0.07 依賴套件
+# 安裝：pip install -r requirements.txt
+#   或：雙擊 install_requirements.bat
+
+# ── 核心（CLI 與兩個介面都需要）──────────────────────────────
+pandas>=1.5
+openpyxl>=3.1
+pillow>=9.0
+
+# ── C 案：Streamlit 網頁版 ───────────────────────────────────
+streamlit>=1.30
+streamlit-option-menu>=0.3
+
+# ── D 案：pywebview 原生視窗版 ───────────────────────────────
+# Windows 會一併安裝 pythonnet / clr_loader，
+# 並使用系統內建的 Microsoft Edge WebView2 Runtime（Win11 內建）
+pywebview>=5.0

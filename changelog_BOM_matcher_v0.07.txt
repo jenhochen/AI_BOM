@@ -1,0 +1,614 @@
+================================================================
+  依賴套件（pip install）
+================================================================
+  共同（核心必要）：
+    pip install pandas openpyxl pillow
+
+  C 案（Streamlit 網頁版）額外需要：
+    pip install streamlit streamlit-option-menu
+
+  D 案（pywebview 原生視窗版）額外需要：
+    pip install pywebview
+      （Windows 會一併安裝 pythonnet / clr_loader，並使用系統內建的
+        Microsoft Edge WebView2 Runtime，不需另外安裝瀏覽器）
+
+  套件明細：
+    pandas                 ≥ 1.5   Excel 零件資料庫讀取 / 資料操作
+    openpyxl               ≥ 3.1   Excel 輸出（格式/合併儲存格/圖片/框線）
+    pillow                 ≥ 9.0   PCB 圖片尺寸讀取與等比縮放
+    streamlit              ≥ 1.30  C 案網頁介面
+    streamlit-option-menu  ≥ 0.3   C 案側邊欄膠囊式導覽
+    pywebview              ≥ 5.0   D 案原生視窗（WebView2）
+
+  內建套件（無需安裝）：
+    re / pathlib / argparse / datetime / importlib / threading / subprocess
+
+  實測環境：Python 3.14.4 / pandas 3.0.3 / openpyxl 3.1.5 /
+            streamlit 1.62.0 / pywebview 6.2.1 / Windows 11
+================================================================
+
+
+================================================================
+  BOM Matcher  —  版本對照摘要
+================================================================
+  v0.07  2026-09-01  介面雙軌化（Streamlit / pywebview）＋替代料拆列
+                     ＋工作目錄改為程式所在目錄＋自動偵測內容驗證
+  v0.06  2026-06-19  Knowledge比對標注 / PCB列 / RC修正 / freeze修正
+  v0.05  2026-06-18  修正框線消失問題（合併儲存格邊界框線）
+  v0.04  2026-06-16  修正 Excel Merge 衝突 / 程式檔加版號
+  v0.03  2026-06-15  ADATA E-BOM 格式輸出、PCB圖片、ITEM/RC/EC 欄位
+  v0.02  2026-06-12  GUI 介面 / 自動偵測 / 雙擊執行
+  v0.01  2026-06-12  首版發布（完整 CLI 功能實作）
+================================================================
+
+
+================================================================
+  v0.07 修訂  2026-09-03   （不進版號，僅修交付物）
+================================================================
+
+  起因：v0.07 第一次交付的壓縮包，五個 .bat 全部無法執行。
+        當時只驗證了 .py，沒有真的去雙擊 .bat。
+
+【.bat 啟動檔全部重做（5 個）】
+
+▌ 問題1：LF 換行 —— cmd.exe 從一行的中間開始執行
+
+  cmd.exe 是用位元組位移讀批次檔的。用 Write 工具產生的 .bat 是
+  LF-only 換行，導致 cmd 定位錯亂，實際症狀：
+
+      'atcher' 不是內部或外部命令      <- "BOM Matcher" 被切碎
+      'v0.07'  不是內部或外部命令
+      'ho'     不是內部或外部命令      <- "echo" 被切成 "ec"+"ho"
+
+  修正：一律 CRLF。產生後驗位元組（CRLF>0 且 lone-LF==0）。
+
+▌ 問題2：UTF-8 中文 —— 指令被吞進 REM 註解
+
+  .bat 存成 UTF-8，但 cmd 用 cp950(Big5) 讀。Big5 解碼時中文的位元組
+  會把換行吃掉，讓下一行併入上一行：
+
+      REM 撌乩??桅??箏??箸 bat ??函??cd /d "%~dp0"
+                                      ^^^ 指令消失在註解裡
+
+  結果工作目錄沒切過去 -> streamlit 報
+      Error: Invalid value: File does not exist: bom_matcher_C_0.07.py
+
+  修正：.bat 內容改為純 ASCII（中文說明全部移到 README），
+        並在開頭加 chcp 65001 + PYTHONIOENCODING=utf-8，
+        讓 Python 印出的中文與 ✓ 在 cmd 裡正常顯示。
+
+▌ 問題3：Streamlit 首次執行卡在互動式 email 詢問
+
+      Welcome to Streamlit!
+      ... please enter your email address below.
+      Email: _              <- 停在這裡等輸入，雙擊的人只看到卡住
+
+  修正：run_C_streamlit.bat 與 install_requirements.bat 會預先建立
+        %USERPROFILE%\.streamlit\credentials.toml（[general] / email = ""）。
+        credentials 只認全域路徑，放專案的 .streamlit\ 無效。
+
+▌ 問題4：install_requirements.bat 誤報 pywebview 未安裝
+
+  檢查行用 webview.__version__，但 pywebview 6.x 沒有這個屬性 ->
+  AttributeError -> || 分支誤報 NOT installed。
+  修正：三個檢查全部改用 importlib.metadata.version()。
+
+▌ 其他
+
+  - .bat 內改用絕對路徑 "%~dp0檔名"，不依賴 cd 之後的相對路徑
+  - 新增 run_D_webview_debug.bat（保留主控台，實機測試出問題時用）
+  - 新增 run_CLI.bat（不需 streamlit / pywebview 即可驗證核心）
+  - .bat 一律由 tools\gen_bats.py 產生，不再手寫
+
+【bom_matcher_C_0.07.py】
+
+▌ 直接雙擊 / python 執行時不再靜默閃退
+
+  Streamlit 的 .py 必須用 streamlit run 啟動。過去直接執行只會噴
+  missing ScriptRunContext 警告然後結束 —— 使用者看到的就是閃退。
+  現在會偵測並印出「請改用 run_C_streamlit.bat」後停住等按鍵。
+  偵測用 get_script_run_ctx(suppress_warning=True)，不再噴警告。
+
+【bom_core_0.07.py】
+
+▌ is_bom_txt() 會把自己的說明文件當成 BOM 檔
+
+  原本判定是「內容含 Bill Of Materials 或 Item/Quantity/Reference」。
+  但本專案的 README_v0.07.txt 與 changelog 裡就寫著這句規則說明，
+  結果說明文件自己命中了偵測規則，被列入 BOM 候選清單。
+  修正：改成要求「TAB 分隔的表頭列，欄位含 Item/Quantity/Reference」，
+        與 parse_text_bom 實際依據一致。
+
+▌ 支援 *.BOM 副檔名
+
+  Altium 匯出的檔案可能是 .txt 也可能是 .BOM。原本只掃 *.txt，
+  會漏掉 TXT\S-M2P42280SMH086-20260812_1.BOM。
+  修正：_BOM_EXTS = ('*.txt', '*.BOM')。
+
+【交付前實機測試清單（HANDOVER 新增，之後強制）】
+
+  1 run_CLI.bat             真實 cmd 執行，中文不亂碼、pause 有停
+  2 run_C_streamlit.bat     真實 cmd -> 8601 LISTENING -> 真實瀏覽器跑完整流程
+  3 run_D_webview.bat       視窗真的開起來；或 --selftest 驅動整條流程
+  4 install_requirements.bat 真實 cmd 執行到檢查區塊
+  5 每個 .bat 位元組         CRLF>0 / lone-LF==0 / 全 ASCII
+  6 壓縮包                  解壓到全新路徑再跑一次 1~4
+  7 壓縮包內容              檔案數對、.streamlit\config.toml 有進去
+  8 自動偵測                印出 discover() 候選，確認沒誤認說明檔／產出檔
+
+【本次修訂的驗證紀錄】
+
+  ✓ [5] 五個 .bat 全部 CRLF>0 / lone-LF=0 / maxByte=126(全 ASCII)
+  ✓ [1] run_CLI.bat 真實 cmd：44 項 -> 51 列，Total 101，中文與 ✓ 正常
+  ✓ [4] install_requirements.bat：三個 [OK] 全部正確顯示版號
+  ✓ [2] run_C_streamlit.bat：8601 LISTENING，真實瀏覽器跑出 45 項/51 列/Total 101
+  ✓ [3] run_D_webview.bat：視窗開啟成功（程序標題確認）
+        --selftest：51 列進 DOM、無誤判橫幅、編輯使 Total 101->109、產出 174KB xlsx
+  ✓ [6] 解壓到全新路徑（ziptest3）後 1~4 全部重跑通過
+  ✓ [7] 壓縮包 21 個檔案，.streamlit\config.toml 有進去
+  ✓ [8] discover() 候選：TXT 2（兩支都是真 BOM）/ DB 1 / Knowledge 1 / IMG 1
+        README 與 changelog 不再被誤認為 BOM 檔
+
+
+================================================================
+  v0.07  2026-09-01
+================================================================
+
+【架構重整】
+
+▌ 拆成「核心 + 兩套前端」，一份邏輯三個介面共用
+
+    bom_core_0.07.py         核心邏輯（解析 / 比對 / Knowledge / 輸出）＋ CLI
+    bom_matcher_C_0.07.py    C 案：Streamlit 網頁版
+    bom_matcher_D_0.07.py    D 案：pywebview 原生視窗版
+    run_C_streamlit.bat      C 案啟動捷徑
+    run_D_webview.bat        D 案啟動捷徑
+    .streamlit\config.toml   C 案主題設定（primaryColor = #4F46E5）
+
+  - v0.06 的 tkinter GUI（BomMatcherApp）已由 C / D 兩案取代，不再維護。
+    需要無 GUI 環境時改用 bom_core_0.07.py 的 CLI。
+  - 前端檔名含小數點，無法用一般 import，兩案皆以 importlib 明確載入
+    bom_core_0.07.py（版本綁定明確，不會誤抓到其他版本的核心）。
+
+【新增】
+
+▌ 替代料拆列（本版主要需求）
+
+  - v0.06：一列塞多個 P/N →「61041115;61041238」
+  - v0.07：一列只有一個 P/N，替代料自動拆成續列
+
+      主列   Item=序號   Qty=數量   Location=位置   P/N=主料
+      續列   Item=空白   Qty=空白   Location=空白   P/N=替代料
+                        ↑ 續列的 Description 是該替代料自己的 DB 描述
+
+  - Total Qty 只加總主列，不會因拆列而重複計算
+      實測：S-SM2268XT 54 項 → 66 列，拆列前後 Total Qty 均為 174
+  - 綠底（含替代料）整組標示，主列與續列都上色
+  - 三料以上同樣支援（實測 Item 21 的 33Ω BEAD 拆出 3 列）
+  - 可關閉：CLI 加 --no-split，或在 C/D 介面關掉「替代料拆列」開關，
+    即回到 v0.06 的 a;b 單列格式
+
+▌ 工作目錄改為「程式所在目錄」
+
+  - v0.06 用 Path.cwd()，從別的資料夾啟動或用捷徑執行時會抓錯目錄
+  - v0.07 一律用 APP_DIR = Path(__file__).resolve().parent
+  - 兩個 .bat 也都有 cd /d "%~dp0"
+
+▌ 自動偵測擴充到子資料夾
+
+  依現行資料夾結構搜尋（不存在就略過）：
+
+      Text BOM     程式目錄 + TXT\
+      零件資料庫   程式目錄 + ExcelDB\
+      Knowledge    程式目錄 + ExcelDB\
+      PCB 圖片     程式目錄 + screenshot\
+      輸出目錄     output\（存在則預設輸出到這裡，否則放程式目錄）
+
+▌ 表頭資訊可填（Excel rows 3–8）
+
+  - 新增 9 個欄位：PCB板號 / PCB料號 / RC/EC NO. / PCB供應商 / PCB 規格 /
+    發行序號 / 發行(改版)日期 / 目前版次 / Support IC Type
+  - C 案「表頭資訊」頁、D 案「表頭資訊」頁皆可填；留空則與 v0.06 相同
+
+▌ 產出前可人工修正
+
+  - 兩案的 BOM 明細表格皆可直接編輯 P/N / RC/EC / Description / Qty /
+    Location，修改後才產出 Excel
+  - 直接解掉長期痛點：Item 17 BAT54KFILM 因 DB 描述為 "SCHOTTY" 而
+    無法自動命中，過去只能事後手改 Excel
+  - Knowledge 命中可逐筆「忽略」，忽略後不標橘底、Note 也不寫入 Excel
+    （用於 TVS 0201 誤命中 SOD-523 這類需人工判斷的情況）
+
+【修正】
+
+▌ 自動偵測誤判（4 個，皆為 v0.06 就存在、本版驗證時當場抓到）
+
+  1. Knowledge 誤抓產出檔
+     - PREVIEW_BOM_knowledge_v0.06.xlsx 檔名含 "knowledge"，但內容是
+       E-BOM 產出檔。v0.06 只看檔名 → 載入 57 筆垃圾、產生 21 個假命中
+     - 修正：改看表頭（第 1 列須有「品名」+「包裝」），且排除 A1 為
+       "ADATA Technology Co., Ltd." 的產出檔
+
+  2. 零件資料庫誤抓產出檔
+     - 根目錄的 0901.xlsx / 0901_.xlsx / PREVIEW_*.xlsx 與
+       ExcelDB\BOM_SM2P41D8QB_*.xlsx 都是 E-BOM 產出檔，v0.06 的
+       「抓所有 *.xlsx」會把它們當成 DB
+     - 修正：新增 is_parts_db()，第 1 列必須同時有 P/N 與 Description
+
+  3. changelog_*.txt 被當成 Text BOM
+     - v0.06 只看副檔名 .txt
+     - 修正：新增 is_bom_txt()，檔案內容必須含 "Bill Of Materials" 或
+       Item/Quantity/Reference 表頭列
+
+  4. ExcelDB / exceldb 同一資料夾被掃兩次
+     - Windows 路徑不分大小寫，子資料夾候選名稱重複
+     - 修正：_dirs() 以 resolve().lower() 去重
+
+▌ D 案視窗開啟即崩潰
+
+  - pywebview 會遞迴列舉 js_api 物件的公開屬性並序列化給 JS。
+    把 window 物件存成 self.window 會走進
+    window.native.AccessibilityObject.Bounds.Empty.Empty...
+    造成 maximum recursion depth exceeded，視窗當場關閉
+  - 修正：window 改放模組層變數 WIN，不掛在 Api 實例上
+
+▌ D 案永遠顯示「預覽模式」橫幅
+
+  - window.pywebview 是頁面載入後才注入的，腳本執行當下判定必為 false
+  - 修正：改用即時檢查 LIVE()，橫幅延遲 1.5 秒後才判定是否顯示
+
+▌ C 案表格把空值顯示成字串 "None"
+
+  - st.data_editor 對 None / pd.NA 會渲染成文字 "None"（Int64 也一樣）
+  - 修正：Item / Qty 兩欄改用字串表示，空值即空字串；存回時再轉回 int
+
+▌ D 案 Description 欄色點換行
+
+  - 色點與 input 同層，input 為 block 導致色點被擠到上一行、列高翻倍
+  - 修正：包一層 .dcell（flex）
+
+▌ 輸出檔名殘留 .BOM
+
+  - xxx-20260812_1.BOM.txt → BOM_xxx-20260812_1.BOM_20260901.xlsx
+  - 修正：default_out_name() 去掉結尾的 .BOM
+
+【C 案（Streamlit）已知限制】
+
+  - st.data_editor 不套用 pandas Styler 的底色，「可編輯」與「三色底」
+    無法同時呈現。目前作法是分成兩個頁籤：
+      ✎ 編輯        st.data_editor + 狀態欄 emoji（🟠🟡🟢⚪）
+      🎨 色底檢視   st.dataframe + Styler（唯讀，底色與 Excel 一致）
+    若日後要兩者兼得，需改用 streamlit-aggrid 元件。
+
+【函式異動（bom_core_0.07.py）】
+
+  新增
+    APP_DIR / SUB_TXT / SUB_DB / SUB_IMG / SUB_OUT   目錄常數
+    is_parts_db(path)          零件DB 表頭驗證
+    is_knowledge_db(path)      Knowledge 表頭驗證
+    is_bom_txt(path)           Text BOM 內容驗證
+    build_rows(items, db, knowledge, split_alt)   ★ 替代料拆列核心
+    total_qty(rows) / stats(rows)                 統計
+    empty_header() / HEADER_FIELDS                表頭欄位
+    find_bom_txts / find_parts_dbs / find_knowledge_dbs / find_pcb_imgs
+    output_dir / default_out_name / discover      自動偵測
+    run_match(bom, db, kn, split_alt, log)        一次跑完（供 GUI 呼叫）
+
+  變更
+    match_item(item, db)   回傳 (candidates, nc)；candidates 為
+                           [(pn, desc), ...]，不再把替代料串成 a;b
+    write_excel(rows, out_path, pcb_img, header_info, log)
+                           改吃「已建構好的 rows」，與比對邏輯解耦，
+                           讓 GUI 可以先讓人修改再輸出
+    _build_header(ws, hi)  新增表頭資訊參數
+    _write_data_row(ws, row, r)   改吃 row dict；Item/Qty 可為 None
+    _add_pcb_image(ws, img, log)  新增 log 參數（GUI 需要導向）
+    _write_footer()        Remark 與圖例文字加註替代料拆列規則
+    _cli()                 text_bom / excel_db 改為選填（未給則自動偵測），
+                           新增 --no-split / -p
+
+  移除
+    BomMatcherApp（tkinter GUI）→ 由 C / D 兩案取代
+
+【驗證紀錄】
+
+  ✓ CLI 全自動：TXT\S-M2P42280SMH086 → 44 項 / 51 列 / Total 101
+  ✓ CLI 指定檔：S-SM2268XT → 54 項 / 66 列 / Total 174
+  ✓ CLI --no-split：S-SM2268XT → 54 項 / 55 列 / Total 174（與拆列一致）
+  ✓ 拆列正確性：Item 2/3/13/18 各拆 2 列、Item 21 拆 3 列
+  ✓ 無任何一列的 P/N 含分號
+  ✓ 續列的 Item / Qty / Location 全為空
+  ✓ 四項自動偵測結果全部正確（TXT 2 / DB 1 / Knowledge 1 / 圖片 2）
+  ✓ C 案：真實瀏覽器操作 偵測→比對→編輯→色底檢視→Knowledge 忽略
+         →產出 Excel→下載
+  ✓ D 案：真實 WebView2 視窗 evaluate_js 驅動 doMatch→51 列進 DOM→
+         點列顯示右側詳情→改 Qty 使 Total 101→109→doExport 產出成功
+  ✓ 表頭資訊寫入驗證：D3=PCB板號 / M5=版次 / D6=供應商 / D8=IC Type
+
+
+================================================================
+  v0.06  2026-06-19
+================================================================
+
+【新增】
+
+▌ Knowledge 比對與標注
+  - 讀取同目錄下「Layout*Knowledge*.xlsx」（或 *Knowledge*.xlsx）
+  - 三種命中條件（任一符合即觸發）：
+      ① PN：BOM P/N（';'分隔後逐一比對）含有 Knowledge PN
+      ② 品名：Knowledge 品名為 BOM Description 的子字串（不分大小寫）
+      ③ 包裝：Knowledge 包裝為 BOM Description 的子字串（dash insensitive）
+  - 命中列：橘底（FFE0B2）標示
+  - 多筆命中同一料件：所有 note 以換行合併，去除重複
+  - Note 寫入欄位：G欄（G:O 合併範圍，單面 PCB 場景）
+  - G36 欄標題由「Location-Bottom Layer」改為「Knowledge Note」
+  - 圖例說明新增「橘底：Knowledge 命中（含注意事項）」
+
+▌ PCB 列（最後一個 ITEM）
+  - 固定為 BOM 最後一項（ITEM = len(items)+1）
+  - RC/EC = EC
+  - P/N = 空白
+  - Description = 'PCB'（固定值）
+  - Qty = 1
+  - Location = 空白
+  - 同樣參與 Knowledge 比對（包裝='PCB' 可命中對應 Knowledge 條目）
+  - 計入 Total Qty
+
+▌ Knowledge DB 自動偵測與 GUI 欄位
+  - CLI：自動在 text_bom 同目錄搜尋 Knowledge 檔案
+    （也可用 -k / --knowledge 明確指定）
+  - GUI：新增「Knowledge DB (.xlsx)」欄位及「瀏覽…」按鈕
+  - 自動偵測：區分 Knowledge xlsx 與 零件DB xlsx，分別填入對應欄位
+    （避免兩者互相覆蓋）
+
+▌ Changelog 最開頭加入套件清單（本版起）
+
+【修正】
+
+▌ RC/EC 分類邏輯修正
+  - 舊版：6103*(電阻) + 6104*(電容) + 6900*(錫膏) → RC
+  - 新版：6103*(電阻) + 6104*(電容) → RC；6900*(錫膏) → EC
+  - 無 P/N 時改由 Description / Footprint 推斷：
+      Description 開頭為容值（10pF、220nF、2.2uF…）→ RC
+      Description 含「RES」關鍵字 → RC
+      Description 含阻值符號（Ω、ohm）→ RC
+      Footprint 開頭為 'C'（電容）或 'R'（電阻）→ RC
+      以上均不符合 → EC
+  - 正確處理範例：
+      10pF/NC  C0201  → RC（電容）
+      22K      R0201  → RC（電阻，fp首字='R'）
+      1M/NC    R0201  → RC（電阻，fp首字='R'）
+      1uH_3.8A S-ZTFL → EC（電感，fp首字='S'，無pF/nF/uF/RES/Ω）
+      25MHz/6pF xtal  → EC（石英振盪器，desc未以容值開頭）
+
+▌ 凍結窗格問題修正（v0.05 regression）
+  - 問題：ws.freeze_panes = 'A37' 導致 rows 1-36（含 PCB 圖片 rows 9-35）
+    被凍結，向下捲動時 PCB 圖片不跟隨捲動
+  - 修正：ws.freeze_panes = None（不設定任何凍結窗格）
+  - 與模板原始行為一致（模板本身無凍結窗格）
+
+▌ 表尾空白行缺少框線（footer row gap 修正）
+  - 問題：圖例區與 Approval 區之間的空白列（原 row += 2 跳過）
+    未被賦予左右外框線，造成外框線斷開
+  - 修正：改為 row += 1 + _set_box(B_FOOT) + row += 1，確保連續
+
+【函式異動】
+  - classify_rcec(pn, desc='', fp='')：新增 desc 與 fp 參數
+  - load_knowledge(path)：新函式，讀取 Knowledge xlsx
+  - find_knowledge_hits(pn, desc, knowledge)：新函式，執行三欄比對
+  - _build_bom_header()：G:O 欄標題改為「Knowledge Note」
+  - _write_data_row()：新增 kn_note 參數；填色優先序 橘>黃>綠
+  - _write_footer()：圖例新增橘底條目；修正 row gap 問題
+  - _find_knowledge()：新函式，自動偵測 Knowledge 檔案
+  - write_excel()：新增 knowledge 參數；加入 PCB 列；移除 freeze_panes
+  - BomMatcherApp._build_ui()：新增 Knowledge DB 欄位與瀏覽按鈕
+  - BomMatcherApp._auto_detect()：自動區分 DB xlsx / Knowledge xlsx
+  - _cli()：新增 -k / --knowledge 參數
+
+
+================================================================
+  v0.05  2026-06-18
+================================================================
+
+【修正】
+
+▌ 框線消失問題（核心修正：合併儲存格的邊界框線分配方式）
+
+  根本原因：
+    Excel 渲染合併儲存格的框線時，是依據範圍內「每一個儲存格」各自
+    的框線設定來決定該邊界是否畫線，而不是只看左上角錨點儲存格。
+    v0.04 的 _cell() 只把框線設定在合併範圍的錨點儲存格上
+    （例如 K7:L8 合併時，只設定 K7 的框線），導致：
+      - 合併範圍「下邊界」「右邊界」對應的儲存格（K8、L8 等）
+        完全沒有框線 → 該邊界在 Excel 中完全不顯示。
+    這正是三個回報問題的共同成因：
+
+    (a) 表格最右邊和底部框線消失
+        → PCB 圖片區（rows 9-35）原本完全沒有設定任何框線；
+          資料區與表尾也只用統一的 thin 框線，且最後一列
+          沒有「封閉」用的 medium 底線。
+
+    (b) 環保等級所在列(row 8)下方框線消失
+        → K7:L8、M7:O8 為兩列合併儲存格，框線只設在 K7/M7，
+          下邊界儲存格 K8/L8/M8/N8/O8 完全沒有框線。
+
+    (c) Total 列與 Approval 列之間框線消失
+        → 表尾（Remark / 圖例 / Approval）區域沒有延續外框
+          medium 框線，造成 Total 列以下視覺上「斷開」。
+
+  修正方式：
+    - 新增 _set_box() 通用函式，取代舊有的 _cell()：
+        merge_cells() 之後，將傳入的 Border 依範圍邊界正確
+        分配到每個邊界儲存格：
+          左邊界(c==c1)的所有列 → 套用 border.left
+          右邊界(c==c2)的所有列 → 套用 border.right
+          上邊界(r==r1)的所有欄 → 套用 border.top
+          下邊界(r==r2)的所有欄 → 套用 border.bottom
+    - PCB 圖片區（rows 9-35）：A欄(左)、O欄(右)逐列套用
+      medium 外框，使整份文件外框連續不中斷。
+    - 表尾區（Remark/圖例/Approval）：全部列改用 B_FOOT；
+      最後一列套用 medium 下框線封閉整張表格。
+    - 環保等級 (K7:L8 / M7:O8)：_set_box() 一次性處理，
+      下邊界 (row 8) 自動取得 medium 框線。
+
+  驗證結果：
+    ✓ 所有列 A欄左框線 / O欄右框線：完整無缺漏
+    ✓ 最後一列：A:O 全部 bottom=medium（封閉表格）
+    ✓ row 8（環保等級）：K/L/M/N/O 全部 bottom=medium
+    ✓ Total 至 Approval：A-left / O-right 連續 medium，無斷線
+    ✓ 合併儲存格衝突數：0
+
+【新增函式】
+  - _set_box()：通用合併/單一儲存格寫入，框線 Excel 100% 相容
+  - B_OUTER / B_TOPCAP / B_BOTCAP / B_BODY_L / B_FOOT：預設框線樣式常數
+
+【移除】
+  - 舊版 _cell() 輔助函式（已被 _set_box() 取代）
+
+
+================================================================
+  v0.04  2026-06-16
+================================================================
+
+【修正】
+
+▌ Excel Merge 衝突修正（主因：Excel 開啟時出現「已進行修復」警告）
+
+  根本原因：
+    v0.03 的 _build_header() 對 rows 3-8 跑同一個 loop，
+    在 row 8 時建立了 K8:L8 與 M8:O8；
+    loop 結束後又對 row 7 執行：
+        unmerge('K7:L7') → merge('K7:L8')   ← 此時 K8:L8 殘留未清除
+        unmerge('M7:O7') → merge('M7:O8')   ← 此時 M8:O8 殘留未清除
+    結果 XML 中同時存在：
+        K7:L8  ↔  K8:L8   (子集衝突)
+        M7:O8  ↔  M8:O8   (子集衝突)
+    Excel 偵測到衝突 → 觸發自動修復。
+
+  修正方式：
+    - 將 rows 7-8 完全移出 loop，單獨處理
+    - Row 7 左側：merge A7:C7、D7:J7
+    - Row 8 左側：merge A8:C8、D8:J8
+    - 右側一次建立 K7:L8 與 M7:O8（2-row span，不做 unmerge）
+    - 完全消除 unmerge/re-merge 操作
+  驗證結果：Conflicting merge pairs = 0
+
+▌ PCB 圖片嵌入方式改為 simple cell anchor
+  - 移除 TwoCellAnchor / AnchorMarker 用法（相容性較差）
+  - 改用 ws.add_image(img, 'A9') + 顯式設定 width/height
+  - 依原始圖片長寬比等比縮放至 height=700px
+
+【新增】
+
+▌ 程式檔案命名加入版號
+  - 格式：bom_matcher_<版號>.py  （例：bom_matcher_0.04.py）
+
+
+================================================================
+  v0.03  2026-06-15
+================================================================
+
+【新增】
+
+▌ ADATA E-BOM 表頭 (rows 1-8)
+  - Row 1 : 公司名稱「ADATA Technology Co., Ltd.」（Arial 14 粗體）
+  - Row 2 : 標題「M.2 SSD E-BOM」（Arial 24 粗體，水平置中）
+  - Row 3 : PCB板號 / 發行序號
+  - Row 4 : PCB料號 / 發行(改版)日期
+  - Row 5 : RC/EC NO. / 目前版次（預設 0）
+  - Row 6 : PCB供應商
+  - Row 7 : PCB 規格 / 環保等級（含 □A□S■H□G 勾選標記）
+  - Row 8 : Support IC Type
+  - 左欄標籤 Arial 14、右欄標籤 標楷體 14，仿製原版格式
+
+▌ PCB 圖片嵌入 (_add_pcb_image)
+  - 圖片放置區：Excel rows 9-35
+  - 自動偵測同目錄 pcb.jpg / pcb.jpeg / pcb.png（大小寫均可）
+  - 找不到圖片時顯示警告但不中止
+
+▌ ITEM 欄 (A 欄)：從 1 起流水序號，含 NC 項目
+
+▌ RC/EC 欄 (B 欄)：6103*/6104*/6900* → RC，其餘 → EC
+
+▌ 欄位結構：Item|RC/EC|P/N|Description|Qty|Location-Top Layer|G:O(合併)
+
+▌ P/N 替代料格式：「61041115;61041238」（';'分隔）
+
+▌ 取消格線（showGridLines = False）
+
+▌ GUI 新增「PCB 圖片」欄位
+
+
+================================================================
+  v0.02  2026-06-12
+================================================================
+
+【新增】
+
+▌ GUI 介面（BomMatcherApp）
+  - 雙擊 / 無參數執行 → 自動啟動 GUI
+  - 欄位：Text BOM / Excel DB / 輸出 BOM，各附「瀏覽…」
+
+▌ 自動偵測（_auto_detect）
+  - 1 個 TXT → 自動填入；2+ 個 → 日誌列出提示
+  - 1 個 XLSX → 自動填入；2+ 個 → 日誌列出提示
+
+▌ 輸出路徑預設：BOM_<BOM原檔名>_<YYYYMMDD>.xlsx
+
+▌ 黑底執行日誌（thread-safe print 重導向）
+
+▌ 非阻塞執行（daemon thread）
+
+▌ CLI 相容（tkinter 延遲匯入）
+
+
+================================================================
+  v0.01  2026-06-12
+================================================================
+
+【新增 — 完整首版】
+
+▌ parse_text_bom   : Altium tab BOM 解析，多行 Reference 合併
+▌ read_db          : Excel 零件資料庫，支援指定 sheet
+▌ is_nc / strip_nc : NC 偵測與剝除（前置/後置/多段/雙斜線）
+▌ find_matches     : C/R/L/其他 分型，邊界安全比對
+    防 1uF⊂0.1uF / 0Ω⊂300Ω / 2KΩ⊂402KΩ
+    TVS 特殊優先 / Token fallback
+▌ write_excel      : 黃底NC / 綠底替代料 / 藍底Total
+▌ CLI              : text_bom / excel_db / -o / -s
+
+
+================================================================
+  使用說明（v0.07）
+================================================================
+
+安裝依賴：
+    pip install pandas openpyxl pillow
+    pip install streamlit streamlit-option-menu      # C 案
+    pip install pywebview                            # D 案
+
+C 案（Streamlit 網頁版）：
+    雙擊 run_C_streamlit.bat
+    或  streamlit run bom_matcher_C_0.07.py
+    ─ 瀏覽器開 http://localhost:8601
+
+D 案（pywebview 原生視窗版）：
+    雙擊 run_D_webview.bat
+    或  python bom_matcher_D_0.07.py
+    ─ 直接開原生視窗，不需瀏覽器
+    ─ python bom_matcher_D_0.07.py --dump-html   輸出 UI 的 HTML 供檢視
+    ─ python bom_matcher_D_0.07.py --selftest    自動跑完整流程後關閉
+
+CLI（無 GUI）：
+    python bom_core_0.07.py                              全自動
+    python bom_core_0.07.py -o out.xlsx
+    python bom_core_0.07.py BOM.txt db.xlsx -k Knowledge.xlsx -p pcb.jpg
+    python bom_core_0.07.py --no-split                   關閉替代料拆列
+
+預期的資料夾結構（皆為選用，找不到就退回程式所在目錄）：
+    F:\AI_BOM\
+      ├ bom_core_0.07.py / bom_matcher_C_0.07.py / bom_matcher_D_0.07.py
+      ├ TXT\           Altium Text BOM
+      ├ ExcelDB\       零件資料庫 + Knowledge
+      ├ screenshot\    PCB 圖片
+      └ output\        產出的 E-BOM

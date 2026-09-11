@@ -1,0 +1,124 @@
+================================================================
+  BOM Matcher  —  版本對照摘要
+================================================================
+  v1.1  2026-06-12  新增 GUI 介面 / 自動偵測 / 雙擊執行
+  v1.0  2026-06-12  首版發布（完整 CLI 功能實作）
+================================================================
+
+
+================================================================
+  v1.1  2026-06-12
+================================================================
+
+【新增】
+
+▌ GUI 介面（BomMatcherApp）
+  - 雙擊 bom_matcher.py 或無參數執行時，自動啟動 GUI
+  - 三個路徑欄位：Text BOM / Excel DB / 輸出 BOM，各附「瀏覽…」按鈕
+  - 檔案對話框預設目錄為目前工作目錄（CWD）
+
+▌ 自動偵測（_auto_detect）
+  - 啟動時掃描 CWD 下的 *.txt 與 *.xlsx 檔案
+  - 剛好 1 個 TXT → 自動填入 Text BOM 欄位
+  - 剛好 1 個 XLSX → 自動填入 Excel DB 欄位
+  - 找到 2 個以上 → 在日誌區列出所有檔名，提示手動選擇
+  - 找不到 → 提示手動選擇
+
+▌ 輸出路徑預設
+  - 選定 BOM TXT 後自動產生預設輸出名稱
+    格式：BOM_<BOM原檔名>_<YYYYMMDD>.xlsx
+  - 使用者可手動覆蓋或另存
+
+▌ 執行日誌（scrolledtext）
+  - 黑底控制台風格文字區，即時顯示 parse / match / write 進度
+  - print() 輸出透過 _StdoutToText 重導向至日誌區（thread-safe）
+  - 執行完成後彈出 messagebox 確認視窗
+
+▌ 非阻塞執行
+  - 點擊「▶ 執行」後以 daemon thread 執行處理，GUI 不凍結
+  - 執行期間「▶ 執行」按鈕 disabled，完成後恢復
+
+▌ CLI 相容
+  - 有傳入 sys.argv 參數時走 _cli()，行為與 v1.0 完全相同
+  - tkinter 為延遲匯入（try/except）：
+    即使在無 GUI 環境（如 CI 伺服器）帶參數執行也不會出錯
+
+【修改】
+  - main() 拆分為 main()（模式判斷） + _cli()（CLI 執行）
+  - VERSION 更新為 "1.1"
+
+
+================================================================
+  v1.0  2026-06-12
+================================================================
+
+【新增功能 — 完整首版】
+
+▌ 解析 (parse_text_bom)
+  - 支援 Altium tab-delimited text BOM 格式
+  - 自動合併 double-tab 開頭的多行 Reference 接續行
+  - 輸出 {item, qty, ref, part, fp} 結構化 dict 清單
+
+▌ 零件資料庫讀取 (read_db)
+  - 支援 .xlsx 任意 sheet（-s 參數指定，預設第一張）
+  - 自動修剪 P/N 與 Description 欄位空白
+
+▌ NC 處理 (is_nc / strip_nc)
+  - 以 '/' 或 '\\' 分段，任一段大小寫無感等於 'NC' → 標記為 NC
+  - 支援各種 NC 位置：前置 (NC/JTAG…)、後置 (10pF/NC)、
+    雙斜線 (220nF//NC)、多段 (25MHz/6pF/NC)
+  - strip_nc 去除所有 NC 段，保留其餘值
+
+▌ 料號比對 (find_matches)
+  C（電容）
+    - 先確認 package（0201/0402/0603…）出現於 Description
+    - 再以 value_in_desc() 邊界安全搜尋電容值
+    - 防止 '1uF' 誤匹 '0.1uF'（look-behind 排除 '.'）
+
+  R（電阻）
+    - 先確認 package
+    - 以 value_in_desc() 同時嘗試原始值與正規化值
+      (300R→300Ω / 10K→10KΩ / 1M→1MΩ，trailing tag _1% 等先剝除)
+    - 防止 '0Ω' 誤匹 '300Ω'/'10Ω'，'2KΩ' 誤匹 '402KΩ'
+
+  L（電感 / Bead）
+    - 先確認 package
+    - 含 'BEAD'：提取 ohm 數值，比對 Description 中 NΩ + BEAD
+    - 含 uH：比對 Description 中 uH 值 + 'INDUCTOR'
+
+  其他（IC / 二極體 / 接頭等）
+    ① 特殊 TVS（part == 'TVS'）：必須在直接名稱比對之前處理
+    ② 直接邊界安全名稱比對（value_in_desc）
+    ③ Token fallback：以 [_\-/\s] 切割，取長度 ≥4 的 token
+
+▌ 替代料處理
+  - 同一條件命中多筆 → 第一筆為主料，其餘以「(或 XXXXX)」附加
+
+▌ 查無料號 fallback
+  - P/N 留空，Description 保留「值 + 封裝」
+  - 已知標準 package code 優先顯示；非標準則顯示完整 footprint
+
+▌ Excel 輸出 (write_excel)
+  - 欄位：P/N / Description / Qty / Location-Top Layer
+  - 黃底：NC 項目；綠底：含替代料；藍底：Total 列
+  - 圖例說明附於表格末端；凍結首行
+
+▌ CLI (main → _cli)
+  - 位置參數：text_bom, excel_db
+  - -o / --output：指定輸出路徑（預設自動產生）
+  - -s / --sheet ：指定資料庫 sheet 名稱
+
+================================================================
+  使用說明
+================================================================
+
+安裝依賴：
+    pip install pandas openpyxl
+
+GUI 模式（雙擊 or 無參數）：
+    python bom_matcher.py
+    bom_matcher.py          ← Windows 直接雙擊（需關聯 .py → python）
+
+CLI 模式：
+    python bom_matcher.py BOM.txt parts_db.xlsx
+    python bom_matcher.py BOM.txt parts_db.xlsx -o result.xlsx -s 工作表4
