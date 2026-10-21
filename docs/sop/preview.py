@@ -137,7 +137,11 @@ def shape_html(sh):
                 txt = f'<a href="#s{{{rid}}}" data-rid="{rid}">{txt}</a>'
             runs.append(f'<span style="font-size:{sz}pt;color:{col};{bold}">'
                         f"{txt}</span>")
-        paras.append("<p>%s</p>" % ("".join(runs) or "&nbsp;"))
+        # 段落對齊：pptx 置中/靠右在 HTML 版也要跟著，否則兩份長得不一樣
+        al = {2: "center", 3: "right", 4: "justify"}.get(
+            getattr(p.alignment, "value", None), "")
+        sty = f' style="text-align:{al}"' if al else ""
+        paras.append(f'<p{sty}>%s</p>' % ("".join(runs) or "&nbsp;"))
     return (f'<div class="sh txt" style="{style}{fill_css(sh)}">'
             f'{"".join(paras)}</div>')
 

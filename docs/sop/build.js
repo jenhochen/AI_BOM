@@ -28,18 +28,12 @@ pres.defineSlideMaster({
   title: 'DIVIDER', background: { color: K.accent1 },
   objects: [],
 });
+// 頁尾只留置中的「☰ 目錄」（Stanley 2026-10-21 指定）。
+// 版號、日期、頁碼都拿掉 —— 版號在封面，日期在 changelog，
+// 頁碼靠目錄跳頁就夠了。
 pres.defineSlideMaster({
   title: 'CONTENT', background: { color: 'FFFFFF' },
-  objects: [
-    { text: { text: `BOM Matcher v${VER} 操作 SOP`,
-      options: { x: L.M, y: 5.17, w: 5, h: 0.3, fontSize: 9,
-                 color: K.accent5, isTextBox: true, margin: 0 } } },
-    { text: { text: DATE,
-      options: { x: 7.4, y: 5.17, w: 1.5, h: 0.3, fontSize: 9, align: 'right',
-                 color: K.accent5, isTextBox: true, margin: 0 } } },
-  ],
-  slideNumber: { x: 9.2, y: 5.17, w: 0.5, h: 0.3, fontSize: 9,
-                 color: K.accent5, align: 'right' },
+  objects: [],
 });
 
 // ── 目錄（Word 大綱式，可點選跳頁）────────────────────────────────────
@@ -74,7 +68,7 @@ function title(sl, t, backLink = true) {
   // PowerPoint 會判定檔案毀損。
   if (backLink) {
     sl.addText([{ text: '☰ 目錄', options: { hyperlink: { slide: TOC_SLIDE } } }],
-      { x: 6.2, y: 5.17, w: 0.95, h: 0.3, fontSize: 9, align: 'right',
+      { x: L.M, y: 5.17, w: L.W - L.M * 2, h: 0.3, fontSize: 9, align: 'center',
         color: K.accent1, isTextBox: true, margin: 0 });
   }
 }
@@ -130,7 +124,7 @@ for (const s of DECK) {
         y += step(e) * f;
       });
     });
-    sl.addText('點選任一列可直接跳到該頁；每頁右下角的「☰ 目錄」可以回到這裡。',
+    sl.addText('點選任一列可直接跳到該頁；每頁下方置中的「☰ 目錄」可以回到這裡。',
       { x: L.M, y: 4.78, w: 9.0, h: 0.3, fontSize: 10, color: K.accent5,
         isTextBox: true, margin: 0 });
     sl.addNotes('目錄，含超連結。');
