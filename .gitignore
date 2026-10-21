@@ -26,3 +26,6 @@ SM8008/
 # ── SOP 產生器的暫存／舊產物 ────────────────────────────────────────────
 docs/sop/theme.tmp.json
 docs/sop/preview.html
+
+# D 案 --dump-html 的除錯產物
+preview_D_ui.html

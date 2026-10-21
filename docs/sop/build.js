@@ -99,23 +99,35 @@ for (const s of DECK) {
   if (s.kind === 'toc') {
     const sl = slideFor(s, 'CONTENT');
     title(sl, '目錄', false);
-    const half = Math.ceil(TOC.length / 2);
-    [TOC.slice(0, half), TOC.slice(half)].forEach((col, ci) => {
+    // 依「高度」分兩欄（不是依筆數），並在章節標題處斷欄；
+    // 欄高超過可用空間時等比壓縮行距 —— 頁數一多，固定行距會超出版面。
+    const step = e => (e.lvl === 1 ? 0.36 : 0.27);
+    const total = TOC.reduce((a, e) => a + step(e), 0);
+    let acc = 0, cut = TOC.length;
+    for (let i = 0; i < TOC.length; i++) {
+      if (acc >= total / 2 && TOC[i].lvl === 1) { cut = i; break; }
+      acc += step(TOC[i]);
+    }
+    const AVAIL = 4.7 - 1.02;
+    [TOC.slice(0, cut), TOC.slice(cut)].forEach((col, ci) => {
       const x = L.M + ci * 4.6;
+      const colH = col.reduce((a, e) => a + step(e), 0);
+      const f = Math.min(1, AVAIL / colH);
       let y = 1.02;
       col.forEach(e => {
         const lv1 = e.lvl === 1;
+        const h = lv1 ? 0.3 : 0.26;              // 框高不縮，只縮行距（縮框會讓文字爆框）
         sl.addText([{ text: lv1 ? `${e.n}　${e.title}` : `　　${e.title}`,
           options: { bold: lv1, color: lv1 ? K.accent1 : K.dk2,
                      hyperlink: { slide: e.page } } }],
-          { x, y, w: 3.75, h: lv1 ? 0.3 : 0.26,
+          { x, y, w: 3.75, h,
             fontSize: lv1 ? 12.5 : 10.5, isTextBox: true, margin: 0 });
         sl.addText([{ text: String(e.page),
           options: { hyperlink: { slide: e.page } } }],
-          { x: x + 3.78, y, w: 0.34, h: lv1 ? 0.3 : 0.26,
+          { x: x + 3.78, y, w: 0.34, h,
             fontSize: lv1 ? 11 : 10, align: 'right',
             color: lv1 ? K.accent1 : K.accent5, isTextBox: true, margin: 0 });
-        y += lv1 ? 0.36 : 0.27;
+        y += step(e) * f;
       });
     });
     sl.addText('點選任一列可直接跳到該頁；每頁右下角的「☰ 目錄」可以回到這裡。',
@@ -140,35 +152,6 @@ for (const s of DECK) {
     continue;
   }
 
-  if (s.kind === 'toc') {
-    const sl = slideFor(s, 'CONTENT');
-    title(sl, '目錄', false);
-    const half = Math.ceil(TOC.length / 2);
-    [TOC.slice(0, half), TOC.slice(half)].forEach((col, ci) => {
-      const x = L.M + ci * 4.6;
-      let y = 1.02;
-      col.forEach(e => {
-        const lv1 = e.lvl === 1;
-        sl.addText([
-          { text: lv1 ? `${e.n}　${e.title}` : `　　${e.title}`,
-            options: { bold: lv1, color: lv1 ? K.accent1 : K.dk2,
-                       hyperlink: { slide: e.page } } },
-        ], { x, y, w: 3.75, h: lv1 ? 0.3 : 0.26,
-             fontSize: lv1 ? 12.5 : 10.5, isTextBox: true, margin: 0 });
-        sl.addText(String(e.page), { x: x + 3.78, y, w: 0.34,
-          h: lv1 ? 0.3 : 0.26, fontSize: lv1 ? 11 : 10, align: 'right',
-          color: lv1 ? K.accent1 : K.accent5, isTextBox: true, margin: 0,
-          hyperlink: { slide: e.page } });
-        y += lv1 ? 0.36 : 0.27;
-      });
-    });
-    sl.addText('點選任一列可直接跳到該頁；每頁右下角的「☰ 目錄」可以回到這裡。',
-      { x: L.M, y: 4.82, w: 9.0, h: 0.3, fontSize: 10, color: K.accent5,
-        isTextBox: true, margin: 0 });
-    sl.addNotes('目錄，含超連結。');
-    continue;
-  }
-
   if (s.kind === 'divider') {
     const sl = slideFor(s, 'DIVIDER');
     sl.addText(s.n, { x: L.M, y: 1.52, w: 2, h: 1.2, fontSize: 60, bold: true,
@@ -186,13 +169,16 @@ for (const s of DECK) {
   title(sl, s.title);
 
   if (s.kind === 'flow') {
-    const y = 1.1, w = 2.02, h = 1.25, gap = 0.19;
+    // 卡片寬度依輸入個數平均分配（v0.10 起五個輸入）
+    const y = 1.1, h = 1.25, gap = 0.19;
+    const w = (9.0 - gap * (s.inputs.length - 1)) / s.inputs.length;
     s.inputs.forEach((it, i) => {
       const x = L.M + i * (w + gap);
       card(sl, x, y, w, h, { name: `in${i}` });
       dot(sl, x + 0.14, y + 0.17, K[it.c] || K.accent1);
       sl.addText(it.k, { x: x + 0.33, y: y + 0.1, w: w - 0.45, h: 0.28,
-        fontSize: 12, bold: true, color: K.dk1, isTextBox: true, margin: 0 });
+        fontSize: s.inputs.length > 4 ? 11 : 12, bold: true, color: K.dk1,
+        isTextBox: true, margin: 0 });
       sl.addText(it.v, { x: x + 0.14, y: y + 0.45, w: w - 0.28, h: 0.65,
         fontSize: 10, color: K.accent5, lineSpacing: 14, isTextBox: true, margin: 0 });
     });
@@ -359,10 +345,13 @@ for (const s of DECK) {
       bold: j === 0,
       fontFace: j === 0 ? 'Consolas' : undefined,
       fill: { color: i % 2 ? 'FFFFFF' : K.lt2 } } }))));
-    sl.addTable(rows, { x: L.M, y: 1.08, w: 9.0, colW: [1.35, 3.0, 4.65],
+    const rowH = s.rowH || 0.42;
+    sl.addTable(rows, { x: L.M, y: 1.08, w: 9.0, colW: s.colW || [1.35, 3.0, 4.65],
       fontSize: 10.5, border: { type: 'solid', color: K.accent6, pt: 1 },
-      rowH: 0.42, valign: 'middle', margin: 6 });
-    sl.addText(s.note, { x: L.M, y: 3.55, w: 9.0, h: 0.7, fontSize: 11,
+      rowH, valign: 'middle', margin: 6 });
+    // 說明文字放在表格下方（列數不固定，不能寫死 y）
+    const noteY = Math.max(3.55, 1.08 + rowH * (s.rows.length + 1) + 0.15);
+    sl.addText(s.note, { x: L.M, y: noteY, w: 9.0, h: 0.7, fontSize: 11,
       color: K.accent5, lineSpacing: 16, isTextBox: true, margin: 0 });
     sl.addNotes(s.note.replace(/\n/g, ' '));
     continue;

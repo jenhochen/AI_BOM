@@ -58,98 +58,108 @@
     "page": 13
   },
   {
-    "lvl": 1,
-    "n": "04",
-    "title": "D 案　原生視窗",
+    "lvl": 2,
+    "title": "右上角的選單（三個點）",
     "page": 14
   },
   {
     "lvl": 2,
-    "title": "步驟 1　檔案設定",
+    "title": "C 案其他頁面與 D 案對照",
     "page": 15
   },
   {
-    "lvl": 2,
-    "title": "步驟 2　比對結果與人工修正",
+    "lvl": 1,
+    "n": "04",
+    "title": "D 案　原生視窗",
     "page": 16
   },
   {
     "lvl": 2,
-    "title": "步驟 3　Knowledge 命中確認",
+    "title": "步驟 1　檔案設定",
     "page": 17
   },
   {
     "lvl": 2,
-    "title": "步驟 4　表頭資訊",
+    "title": "步驟 2　比對結果與人工修正",
     "page": 18
   },
   {
     "lvl": 2,
-    "title": "步驟 5　產出 E-BOM",
+    "title": "步驟 3　Knowledge 命中確認",
     "page": 19
+  },
+  {
+    "lvl": 2,
+    "title": "步驟 4　表頭資訊",
+    "page": 20
+  },
+  {
+    "lvl": 2,
+    "title": "步驟 5　產出 E-BOM",
+    "page": 21
   },
   {
     "lvl": 1,
     "n": "05",
     "title": "雙面板　TOP / BOT",
-    "page": 20
+    "page": 22
   },
   {
     "lvl": 2,
     "title": "Location 查不到 Top/Bot 時",
-    "page": 21
+    "page": 23
   },
   {
     "lvl": 2,
     "title": "雙面板的三個規則",
-    "page": 22
+    "page": 24
   },
   {
     "lvl": 1,
     "n": "06",
     "title": "電容降壓選料　R8",
-    "page": 23
+    "page": 25
   },
   {
     "lvl": 2,
     "title": "耐壓低於原始設計的替代料",
-    "page": 24
+    "page": 26
   },
   {
     "lvl": 2,
     "title": "R8 怎麼判、怎麼確認",
-    "page": 25
+    "page": 27
   },
   {
     "lvl": 1,
     "n": "07",
     "title": "看懂產出的 Excel",
-    "page": 26
+    "page": 28
   },
   {
     "lvl": 2,
     "title": "色底規則與替代料拆列",
-    "page": 27
+    "page": 29
   },
   {
     "lvl": 2,
     "title": "資料夾規則與自動偵測",
-    "page": 28
+    "page": 30
   },
   {
     "lvl": 1,
     "n": "08",
     "title": "疑難排解",
-    "page": 29
+    "page": 31
   },
   {
     "lvl": 2,
     "title": "常見問題",
-    "page": 30
+    "page": 32
   },
   {
     "lvl": 2,
     "title": "v0.10 的重點",
-    "page": 31
+    "page": 33
   }
 ]

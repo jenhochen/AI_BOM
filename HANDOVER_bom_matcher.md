@@ -242,6 +242,54 @@ v0.10 實測發現**不夠**：widget 值綁在「widget 身分」上，同一�
 `StreamlitAPIException: cannot be modified after the widget ... is instantiated`。
 要先存 `pend_xxx` 再 `st.rerun()`，在 selectbox 建立之前套用。
 
+### v0.10 追加（2026-10-21 下午）
+
+| 項目 | 結果 |
+|---|---|
+| Location 前綴上畫面 | C/D 表格的 Location-Top / Bot 也帶 (T)/(B)（Q1，已確認保留）|
+| 藏掉 Deploy | `.streamlit\config.toml` `toolbarMode = "viewer"`（Q3）|
+| ADATA LOGO | 比照 Firmware Tool，C/D 左上角換成 `adata.png`（蜂鳥）；找不到檔案時回退成「B」徽章 |
+| 彩蛋 | 按住 **Shift** 連點三次 LOGO → 小蜜蜂遊戲。沒有開關、介面上沒有任何提示（比照 Firmware Tool）|
+| SOP 對照檢查 | C/D 介面逐項比對 SOP，補齊／改正十幾處；C 案截圖全部重拍，新增兩頁 → 33 頁 |
+| HTML 版 SOP 截圖全空白 | `preview.py` 修正（見下）|
+
+### 彩蛋（小蜜蜂）的結構
+
+- 遊戲本體與 LOGO 讀取都在 `bom_core` 第 14b 節：`BEE_GAME_JS`（定義
+  `window.bmBeeGame(canvas, onExit)`，回傳 `stop()`）、`app_logo_uri()`、
+  `EGG_CLICKS = 3`、`EGG_WINDOW_MS = 3000`。C/D 兩案共用同一份。
+- D 案：`page_html()` 把 HTML 裡的 `__LOGO_TAG__` / `__VER__` /
+  `/*__BEE_GAME__*/` 等佔位字串換掉，遊戲視窗是 `#egg` 覆蓋層。
+- C 案：用 **Custom Components v2**（`st.components.v2.component('bm_brand')`）
+  畫品牌區。連點計數全在瀏覽器端，不回 Python；遊戲覆蓋層掛在
+  `document.body`，不受側邊欄版面與 Shadow DOM 樣式限制。
+  ⚠️ 不要改用 `st.components.v1.html` —— v1 已棄用，而且是 iframe，
+  覆蓋層蓋不到整個頁面。
+- ⚠️ 照抄 Firmware Tool 的兩個坑：**監聽 pointerdown 不是 click**
+  （`<img>` 原生拖曳會吃掉 click）、圖片 `draggable=false`。
+  遊戲視窗一定要有 ✕，Esc 也要能關；關閉時呼叫 `stop()` 收掉
+  requestAnimationFrame 與鍵盤監聽，否則方向鍵會繼續被吃。
+
+### HTML 版 SOP 的截圖一直是空白的
+
+`build.js` 在每張截圖上疊一個「白色、透明度 100%」的矩形當外框。
+`preview.py` 的 `fill_css()` 只取顏色、沒取透明度 → 變成實心白塊，
+**把底下的截圖整張蓋掉**。QA 的 `imgFail` 只檢查圖片有沒有載入，
+所以一直回報 0，沒人發現。已改成讀 `a:alpha`，透明度 100% 就不輸出底色。
+
+教訓：版面 QA 通過 ≠ 看得到。HTML 版至少要實際截一頁有截圖的來看。
+
+### 截圖怎麼重拍（不必開真的視窗）
+
+- **D 案**：載入 `bom_matcher_D_0.10.py`，用 `Api().run_match()` 拿實際狀態，
+  `page_html()` 加一段假的 `window.pywebview.api`（回傳同一份 state），
+  用 headless Chrome 截圖。舊截圖含 31px 的 Windows 標題列，
+  SOP 的 marks 座標是照那個算的 —— 重拍時把舊圖的標題列貼回去，marks 就不用改。
+- **C 案**：`streamlit run` 起一個實例，用 Chrome DevTools Protocol 點按鈕後截圖。
+  寬度用 1440（1280 時「瀏覽…」按鈕會折成兩行），SOP 的 `ar` 改成 `1440 / 942`。
+- ⚠️ 用 Chrome，不要用 Edge headless —— Edge 會在畫面右緣疊一個浮動圖示，
+  不在 DOM 裡，CSS 藏不掉。
+
 ---
 
 ## v0.09 已完成（2026-10-19）
@@ -367,24 +415,22 @@ v0.10 的 T1–T5 全部完成，目前沒有待辦。
 
 | # | 項目 | 提出日 | 狀態 |
 |---|---|---|---|
-| Q1 | C/D 介面 Location 欄也顯示 (T)/(B) | 2026-10-21 | **已實作**，等 Stanley 確認要不要留 |
+| Q1 | C/D 介面 Location 欄也顯示 (T)/(B) | 2026-10-21 | **Stanley 確認保留**（2026-10-21）|
 | Q2 | 真正的 TOP / BOT 兩張 PCB 圖 | 2026-10-21 | 等提供檔案 |
-| Q3 | Streamlit 右上角 Deploy 與 ⋮ 選單 | 2026-10-21 | **已處理**（toolbarMode = viewer）|
+| Q3 | Streamlit 右上角 Deploy 與 ⋮ 選單 | 2026-10-21 | **已處理**（toolbarMode = viewer，SOP 已補說明）|
 
-**Q1　Location 欄顯示前綴 —— 已實作**
+**Q1　Location 欄顯示前綴 —— 已確認保留**
 C 案 `_rows_to_df()`、D 案 `_rows_js()` 都套上 `core.tag_side()`，
 畫面與輸出 Excel 一致。改過的值寫回 `ref_top` / `ref_bot` 會帶著前綴，
 寫 Excel 時 `tag_side()` 冪等，不會疊成 `(T)(T)`。
 
-要改回「畫面不顯示前綴」只要拿掉那兩處 `core.tag_side()`。
-
 修改前後對照（SM8008 實際資料）：
-`screenshot0.10_D_Location前綴_修改前後.png`、
-`screenshot0.10_C_Location前綴_修改前後.png`
+`screenshot\v0.10_D_Location前綴_修改前後.png`、
+`screenshot\v0.10_C_Location前綴_修改前後.png`
 
 ★ 代價：每個 Location 多 3 個字元，欄寬不變的話一格看得到的會變少
 （例：Item 3 的 Location-Top 完整看得到的從約 7 個變 4 個）。
-Stanley 看過預覽圖後如果覺得不划算，就改回去。
+Stanley 看過預覽圖後決定保留。要改回只要拿掉那兩處 `core.tag_side()`。
 
 **Q2　TOP / BOT 兩張 PCB 圖 —— 等檔案**
 目前 TOP / BOT 都指到同一張 `pcb.jpg`，雙面板圖片區上下兩半是同一張圖
@@ -397,6 +443,8 @@ Stanley 看過預覽圖後如果覺得不划算，就改回去。
 把 Deploy 按鈕與開發者選項（Rerun / Clear cache）藏起來。
 Deploy 是把程式發佈到 Streamlit 雲端，對內部工具沒有用途，
 而且有外流原始碼與資料的風險。
+實測 Streamlit 1.62：⋮ 選單只剩 **Print** 與 **Record screen**，
+SOP 第 14 頁「右上角的選單（三個點）」照這兩項寫。
 
 ★ 這個設定只有在交付包裡的 `.streamlit\config.toml` 一起帶出去才有效 ——
 打包時務必確認這個資料夾有進去（PowerShell 壓縮常漏掉 dot 開頭資料夾，

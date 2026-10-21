@@ -363,10 +363,12 @@ Altium Text BOM + Excel 零件資料庫  →  ADATA E-BOM 格式 Excel
   • Location-Top / Location-Bottom 兩欄的每個 Location 加上 (T) / (B)
         (T)BC26,(T)C76,(T)C81        (B)BC28,(B)C55,(B)C56
   • R8 電容降壓選料：容值與封裝一致、但 DB 耐壓低於原始設計時可以選，
-    Description 自動加註「(原始設計為10V, 請再確認)」，該列標紫底。
+    Description 自動加註「(原始設計為10V, 請再確認)」，畫面標 🔴、Excel 標紫底。
     SM8008 命中 45 → 55（+10 項電容），Total Qty 不變。
     只放寬電容耐壓 —— 電流與誤差不放寬，那是功能性錯誤。
+  • C/D 畫面上的 Location 欄也帶 (T)/(B)，與輸出 Excel 一致
   • 輸出路徑已經有同名檔時會先問，不會無聲蓋掉
+  • 左上角換成 ADATA LOGO；C 案右上角的 Deploy 按鈕已拿掉
   • 用語統一：位號 → Location、面別 → Top/Bot、chip → 篩選鈕
   • 操作 SOP 改成標註式版面：截圖上標 ①②③，右側說明同號對應
   • 雙面板：給 Location 對照表就多一欄 Location-Bottom Layer；

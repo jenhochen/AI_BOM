@@ -2,7 +2,7 @@
 // 與 F:\AI_ini_allin1\docs\sop 同樣的作法：content / build / preview 三分。
 
 const VER = '0.10';
-const DATE = '2026-10-20';
+const DATE = '2026-10-21';
 
 const THEME = {
   name: 'BOM Matcher',
@@ -41,7 +41,8 @@ const SLIDES = [
       { k: 'Text BOM', v: 'Altium 匯出\n*.txt 或 *.BOM', c: 'accent1' },
       { k: '零件資料庫', v: 'P/N + Description\n*.xlsx', c: 'accent1' },
       { k: 'Knowledge', v: '品名 / 包裝 / 注意事項\n*.xlsx', c: 'accent3' },
-      { k: 'PCB 圖片', v: 'pcb.jpg / png\n嵌入 rows 9-35', c: 'accent5' },
+      { k: 'PCB 圖片', v: 'TOP / BOT 各一張\n嵌入 rows 9-35', c: 'accent5' },
+      { k: 'Location 對照表', v: '選填，給了就是\n雙面板．*.xlsx', c: 'accent5' },
     ],
     out: 'ADATA E-BOM 格式 Excel',
     outNote: '表頭、PCB 圖、BOM 明細、Total、表尾一次做好',
@@ -64,7 +65,7 @@ const SLIDES = [
         b: ['雙擊即開，不需要瀏覽器',
             '三欄式，右側即時顯示明細',
             '色底與編輯可以並存',
-            '篩選鈕：未命中 / NC / 替代料 / 需確認'] },
+            '篩選鈕＋搜尋框，快速找到要確認的列'] },
     ] },
 
   // ── 二、安裝 ────────────────────────────────────────────────────────
@@ -99,17 +100,18 @@ const SLIDES = [
   { kind: 'divider', section: 'C 案操作', n: '03', title: 'C 案　瀏覽器介面' },
 
   { kind: 'shot', section: 'C 案操作', title: '步驟 1　檔案設定',
-    img: SHOTS + 'C_01_files.jpg', ar: 800 / 523,
+    img: SHOTS + 'C_01_files.jpg', ar: 1440 / 942,
     bullets: [
-      '四個檔案由程式自動偵測，候選依**最後修改時間**排序，最新的排第一個',
-      '偵測是看「內容」不是看檔名 —— 把產出的 E-BOM 丟回資料夾不會被誤認',
-      '不對就按右邊的「瀏覽…」自己選',
+      '上面四個檔案由程式自動偵測，候選依**最後修改時間**排序，最新的排第一個',
+      '「雙面板（選填）」區塊：Location TOP/BOT 對照表、PCB 圖片（BOT 面）',
+      '綠色「雙面板模式」／藍色「單面板模式」告訴你這次會怎麼輸出',
+      '不對就按右邊的「瀏覽…」，或選「— 手動輸入路徑 —」自己貼路徑',
       '輸出路徑預設在 output\\，副檔名一律強制 .xlsx',
     ],
     warn: '確認 Text BOM 是你這次要跑的那一支。\n選錯檔案是最常見的失誤。' },
 
   { kind: 'shot', section: 'C 案操作', title: '檔案不在預設清單裡',
-    img: SHOTS + 'C_02_browser.jpg', ar: 800 / 523,
+    img: SHOTS + 'C_02_browser.jpg', ar: 1440 / 942,
     bullets: [
       '展開「📂 目錄瀏覽器」就能自己翻資料夾',
       '左邊是子資料夾，右邊是符合副檔名的檔案，後面附最後修改日期',
@@ -119,23 +121,47 @@ const SLIDES = [
     warn: '「瀏覽…」開的是 Windows 原生對話框，偶爾會躲在瀏覽器視窗後面。\n找不到就改用目錄瀏覽器，功能一樣。' },
 
   { kind: 'shot', section: 'C 案操作', title: '步驟 2　比對結果',
-    img: SHOTS + 'C_03_rows.jpg', ar: 800 / 523,
+    img: SHOTS + 'C_03_rows.jpg', ar: 1440 / 942,
     bullets: [
-      '上方六個數字：總項次 / 輸出列數 / 命中 / 未命中 / Knowledge / Total Qty',
-      '表格可直接改 P/N、RC/EC、Description、Qty、Location',
+      '上方六個數字：總項次 / 輸出列數 / 命中 P/N / 未命中 / Knowledge / Total Qty',
+      '表格可直接改 P/N、RC/EC、Description、Qty、Location（帶 **(T)/(B)**，同 Excel）',
       '改完按「儲存修改」才會帶進產出的 Excel',
-      '狀態欄的 🟠🟡🟢⚪ 對應輸出 Excel 的橘／黃／綠底',
+      '狀態欄：🔴 R8 降壓選料　⚠️ Location 未知　🟠🟡🟢 對應 Excel 色底',
     ],
     warn: 'C 案的「✎ 編輯」頁籤不顯示色底 —— 這是 Streamlit 的限制。\n要看色底請切到「🎨 色底檢視」頁籤（唯讀）。' },
 
   { kind: 'shot', section: 'C 案操作', title: '步驟 3　產出 E-BOM',
-    img: SHOTS + 'C_04_export.jpg', ar: 800 / 523,
+    img: SHOTS + 'C_04_export.jpg', ar: 1440 / 942,
     bullets: [
+      '輸出路徑已經有同名檔時會出現黃色警告，要勾「確認覆蓋」才按得下去',
       '按「▶ 產出 Excel」，檔案直接寫到輸出路徑',
       '下方日誌會列出 PCB 圖片尺寸、實際輸出路徑、項數與 Total Qty',
       '「⤓ 下載 xlsx」可另存一份到瀏覽器的下載目錄',
     ],
-    warn: '最後一行的「113 項（含PCB）→ 138 列」要對得上預期。\n列數比項數多，是因為替代料被拆成獨立列。' },
+    warn: '最後一行的「113 項（含PCB）→ 151 列」要對得上預期。\n列數比項數多，是因為替代料被拆成獨立列。' },
+
+  { kind: 'shot', section: 'C 案操作', title: '右上角的選單（三個點）',
+    img: SHOTS + 'C_05_menu.jpg', ar: 1440 / 942,
+    bullets: [
+      '只剩兩項：**Print**（列印目前頁面）、**Record screen**（把操作過程錄成影片）',
+      'Record screen 適合回報問題：錄下操作步驟，存成檔案寄給維護人員',
+      'Streamlit 的 Deploy 按鈕與開發者選項已經關掉，不會出現',
+      '要重抓資料夾裡的檔案，用左側「↺ 重新掃描目錄」',
+    ],
+    warn: '瀏覽器重新整理（F5）會清掉這次的比對結果與手動修改，\n要重新執行比對。' },
+
+  { kind: 'table', section: 'C 案操作', title: 'C 案其他頁面與 D 案對照',
+    head: ['頁面', 'C 案', 'D 案'],
+    colW: [1.6, 3.7, 3.7], rowH: 0.4,
+    rows: [
+      ['Knowledge 命中', '每筆一張卡片，「✕ 忽略此筆」', '同左（D 案步驟 3）'],
+      ['表頭資訊', '九個欄位，留空就是空白', '同左（D 案步驟 4）'],
+      ['色底', '「🎨 色底檢視」頁籤（唯讀）', '表格直接上色，可邊看邊改'],
+      ['覆蓋確認', '勾「確認覆蓋」才能產出', '跳出確認對話框'],
+      ['開啟時的頁面', '比對結果（先按「▶ 執行比對」）', '檔案設定'],
+    ],
+    note: '兩案共用同一份核心，同一份輸入產出的 Excel 完全相同。\n' +
+          'Knowledge 與表頭的操作見 D 案步驟 3、4。' },
 
   // ── 四、D 案 ────────────────────────────────────────────────────────
   { kind: 'divider', section: 'D 案操作', n: '04', title: 'D 案　原生視窗' },
@@ -143,23 +169,23 @@ const SLIDES = [
   { kind: 'shot', section: 'D 案操作', title: '步驟 1　檔案設定',
     img: SHOTS + 'D_01_files.png', ar: 1280 / 820,
     bullets: [
-      '欄位與 C 案相同，每個都有「瀏覽…」',
+      '欄位與 C 案相同；輸入檔按「瀏覽…」，輸出路徑按「變更…」',
       '**Location TOP/BOT 對照表**：選填，給了就切換成雙面板模式',
       '**PCB 圖片（BOT 面）**：雙面板時提供兩張，圖片區自動切成上下兩半',
       '「替代料拆列」打勾時一列只有一個 P/N；取消勾選會回到 a;b 單列格式',
       '下方黑色區塊是執行日誌',
       '按「▶ 執行比對」開始',
     ],
-    warn: '標題列會標出啟動用的 .bat：\nBOM Matcher v0.08　[run_D_webview.bat]' },
+    warn: '標題列會標出啟動用的 .bat：\nBOM Matcher v0.10　[run_D_webview.bat]' },
 
   { kind: 'shot', section: 'D 案操作', title: '步驟 2　比對結果與人工修正',
     img: SHOTS + 'D_02_rows.png', ar: 1280 / 820,
     marks: [[1, 300, 329], [2, 390, 457], [3, 300, 259], [4, 300, 791]],
     bullets: [
-      '點任何一列，右側會顯示該料件的 Footprint、RC/EC、P/N、比對狀態',
+      '點任何一列，右側會顯示該料件的 Footprint、RC/EC、P/N、Qty、比對狀態',
       '未命中的列顯示「— 無命中 —」，直接在格子裡補料號',
-      '表格上方的**篩選鈕**：全部 / 未命中 / NC / 替代料 / Knowledge / 需確認 / Location 未知',
-      '底色與輸出 Excel 一致，編輯與色底可以並存',
+      '表格上方的**篩選鈕**：全部 / 未命中 / NC / 替代料 / Knowledge / 需確認 / Location 未知，右邊還有搜尋框',
+      '色系與輸出 Excel 相同（畫面較淡）；R8 用紅點標示，Excel 是紫底',
     ],
     warn: '改了 Qty，右上角的 Total Qty 會立刻跟著變，\n可以用來確認改對了。' },
 
@@ -186,8 +212,9 @@ const SLIDES = [
     img: SHOTS + 'D_05_export.png', ar: 1280 / 820,
     bullets: [
       '確認輸出路徑後按「▶ 產出 Excel」',
+      '同名檔已經存在時會跳出確認視窗，按「取消」就不產出',
       '「開啟輸出資料夾」會直接叫出檔案總管',
-      '底部動作列隨時可以產出，不必回到這一頁',
+      '檔案設定與比對結果頁的右上角也有「▶ 產出 E-BOM」，不必切到這一頁',
     ] },
 
   // ── 五、雙面板 ──────────────────────────────────────────────────────
@@ -211,7 +238,7 @@ const SLIDES = [
         b: ['第一欄＝Location，第二欄＝Top/Bot',
             '不看表頭名稱（實際檔案 TXT 是 T/B、XLSX 是 T_B）',
             'TOP/T/BOT/B/BOTTOM 都接受',
-            '放程式目錄或 ExcelDB\ 底下'] },
+            '放程式目錄或 ExcelDB\\ 底下'] },
       { t: 'Excel 欄位', s: '維持 15 欄（A:O）',
         b: ['F＝Location-Top Layer',
             'G＝Location-Bottom Layer',
@@ -234,7 +261,7 @@ const SLIDES = [
       '表格上方的「需確認」篩選鈕只看這一類，數字是筆數',
       '容值與封裝一致、**DB 耐壓低於設計值**的電容才會進這一類',
       'Description 自動加註 **(原始設計為10V, 請再確認)**，原始耐壓寫在裡面',
-      '這些列標**紫底**，Excel 的圖例也會多一列說明',
+      '畫面上以 🔴／紅點標示；輸出 Excel 標**紫底**，圖例也會多一列說明',
     ],
     warn: '只放寬電容的耐壓。電流與誤差不放寬 ——\n'
         + '耐壓不足看得到、可人工判斷；誤差或電流不符是功能性錯誤。' },
@@ -309,7 +336,7 @@ const SLIDES = [
       ['NC(...) 認得出來', 'SM8008 有 26 項括號式 NC，v0.08 全部漏判'],
       ['未命中會說原因', '不再靜默留白 —— 格式變了當場就看得到'],
       ['雙面板 Top / Bot', 'F、G 兩欄＋兩張 PCB 圖＋Location 對不上三層警告'],
-      ['Location 加 (T)/(B)', 'Location-Top / Location-Bottom 每個值都冠上 (T) 或 (B)'],
+      ['Location 加 (T)/(B)', 'Excel 與 C/D 畫面的 Location-Top / Bot 每個值都冠上 (T) 或 (B)'],
       ['R8 電容降壓選料', '耐壓不足可選，Description 註記「請再確認」並標紫底'],
       ['SM8008 命中 26 → 45', '三份 BOM 回歸測試零退步'],
     ],

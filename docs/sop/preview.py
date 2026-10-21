@@ -60,7 +60,17 @@ def fill_css(sh):
     css = ""
     try:
         if sh.fill.type == 1:                     # MSO_FILL_TYPE.SOLID
-            css += f"background:#{sh.fill.fore_color.rgb};"
+            # 透明度要一起翻：截圖外框是「白色、透明度 100%」的矩形，
+            # 只取顏色的話會變成實心白塊，把底下的截圖整張蓋掉（v0.10 實際踩到，
+            # HTML 版每一張截圖都是空白，QA 的 imgFail 檢查不出來）。
+            alpha = sh.fill._xPr.xpath('./a:solidFill/*/a:alpha/@val')
+            a = int(alpha[0]) / 100000 if alpha else 1.0
+            rgb = str(sh.fill.fore_color.rgb)
+            if a >= 1.0:
+                css += f"background:#{rgb};"
+            elif a > 0:
+                r, g, b = (int(rgb[i:i + 2], 16) for i in (0, 2, 4))
+                css += f"background:rgba({r},{g},{b},{a:.2f});"
     except Exception:
         pass
     try:
