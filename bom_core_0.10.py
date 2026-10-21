@@ -1262,6 +1262,8 @@ def write_excel(rows: list, out_path: str, pcb_img: str = None,
     if fixed != out_path:
         log(f"[提醒] 輸出副檔名已自動更正為 .xlsx：{Path(fixed).name}")
     out_path = fixed
+    if Path(out_path).is_file():
+        log(f"[警告] 覆蓋既有檔案：{Path(out_path).name}")
 
     wb = openpyxl.Workbook()
     ws = wb.active; ws.title = 'BOM'

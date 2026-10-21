@@ -10,6 +10,7 @@ bom_matcher_C_0.10.py  v0.10  —  C 案：Streamlit 網頁版
 """
 
 import io
+import os
 import sys
 import importlib.util
 from pathlib import Path
@@ -234,6 +235,18 @@ def _dir_browser(kind: str, key: str):
 def _pick(title, key, options, help_txt='', kind=None):
     """下拉選單（自動偵測結果）＋ 瀏覽… ＋ 目錄瀏覽器 ＋ 手動輸入路徑。"""
     kind = kind or key
+    # 上一輪「瀏覽…」或目錄瀏覽器選到的檔案，必須在 selectbox 建立「之前」
+    # 才能套用。直接寫 st.session_state['sel_xxx'] 會噴
+    #   StreamlitAPIException: cannot be modified after the widget ...
+    # —— 實測按 PCB 圖片（BOT 面）的「瀏覽…」必爆。
+    pend = st.session_state.pop(f'pend_{key}', None)
+    if pend:
+        st.session_state[key] = pend
+        # 只把 session_state['sel_xxx'] 刪掉是沒用的 —— Streamlit 的
+        # widget 值綁在「widget 身分」上，同一個 key 再建出來還是沿用舊值
+        # （實測：目錄瀏覽器選了 pcb.jpg，下拉選單仍停在「手動輸入路徑」）。
+        # 換掉 key 讓它變成新的 widget，index 才會生效。
+        st.session_state[f'gen_{key}'] = st.session_state.get(f'gen_{key}', 0) + 1
     cur = st.session_state.get(key, '')
     opts = list(dict.fromkeys([o for o in options if o] + ([cur] if cur else [])))
     opts.append('— 手動輸入路徑 —')
@@ -244,14 +257,14 @@ def _pick(title, key, options, help_txt='', kind=None):
         sel = st.selectbox(
             title, opts, index=idx,
             format_func=lambda p: _label(p) if Path(p).is_absolute() else p,
-            key=f'sel_{key}', help=help_txt)
+            key=f'sel_{key}_{st.session_state.get(f"gen_{key}", 0)}',
+            help=help_txt)
     with c2:
         st.write('')
         if st.button('瀏覽…', key=f'br_{key}', use_container_width=True):
             r = _native_dialog(kind, cur)
             if r:
-                st.session_state[key] = r
-                st.session_state[f'sel_{key}'] = r
+                st.session_state[f'pend_{key}'] = r
                 st.rerun()
             elif r is None:
                 st.session_state[f'open_br_{key}'] = True
@@ -265,8 +278,7 @@ def _pick(title, key, options, help_txt='', kind=None):
             st.warning(f'原生對話框無法使用，請用這裡選：{st.session_state.pop("dlg_err")}')
         got = _dir_browser(kind, key)
         if got:
-            st.session_state[key] = got
-            st.session_state[f'sel_{key}'] = got
+            st.session_state[f'pend_{key}'] = got
             st.session_state[f'open_br_{key}'] = False
             st.rerun()
 
@@ -281,7 +293,7 @@ def _double(rows):
 
 def _rows_to_df(rows):
     df = pd.DataFrame([{
-        '狀態': ('🔴' if r.get('ref_unk') else '🟣' if r.get('chk')
+        '狀態': ('⚠️' if r.get('ref_unk') else '🔴' if r.get('chk')
                  else '🟠' if r['kn']
                  else '🟡' if r['nc'] else '🟢' if r['group'] else '⚪'),
         # 替代料續列的 Item / Qty 留空。data_editor 會把 None/<NA> 顯示成
@@ -324,8 +336,8 @@ def _df_to_rows(df, rows):
 
 def _style(df):
     def color(row):
-        c = ('#FDE1E1' if row['狀態'] == '🔴' else
-             '#EDE9FE' if row['狀態'] == '🟣' else
+        c = ('#FDE1E1' if row['狀態'] == '⚠️' else
+             '#EDE9FE' if row['狀態'] == '🔴' else
              '#FFE0B2' if row['狀態'] == '🟠' else
              '#FFF2CC' if row['狀態'] == '🟡' else
              '#E2EFDA' if row['狀態'] == '🟢' else '')
@@ -389,7 +401,8 @@ with st.sidebar:
         # 結果是原本沒偵測到（值為空）的欄位，掃描後新增的檔案仍然選不到
         # —— 實測把 Location 對照表放進 ExcelDB\ 後按重新掃描，欄位還是空的。
         for k in [x for x in list(st.session_state)
-                  if x.startswith(('sel_', 'txt_', 'cwd_', 'open_br_'))]:
+                  if x.startswith(('sel_', 'txt_', 'cwd_', 'open_br_',
+                                   'pend_', 'gen_'))]:
             st.session_state.pop(k, None)
         for k in ('disc', 'bom', 'db', 'kn', 'pcb', 'pcb_bot', 'sides'):
             st.session_state.pop(k, None)
@@ -506,9 +519,9 @@ elif page == '比對結果':
             if c1.button('儲存修改', type='primary'):
                 st.session_state.rows = _df_to_rows(ed, rows)
                 c2.success('已套用到待產出的資料')
-            st.caption('🟣 R8 降壓選料（請人工確認）　🟠 Knowledge 命中　'
+            st.caption('🔴 **R8 降壓選料（請人工確認）**　🟠 Knowledge 命中　'
                        '🟡 原本為 NC　🟢 含替代料（已拆列）　⚪ 一般　'
-                       '🔴 有 Location 查不到 Top/Bot　— 與輸出 Excel 的填色一致。'
+                       '⚠️ 有 Location 查不到 Top/Bot　— 與輸出 Excel 的填色一致。'
                        'Item / Qty 空白的列 = 替代料續列，Qty 併入主列計算。')
 
         with tab_v:
@@ -585,7 +598,13 @@ elif page == '產出 E-BOM':
                    f"Total Qty = {s['qty']}　|　PCB 圖片："
                    f"{_label(st.session_state.pcb)}")
         st.write('')
-        if st.button('▶ 產出 Excel', type='primary'):
+        # 同名檔要先確認再覆蓋（D 案用 confirm 對話框，這裡用勾選框）
+        exists = Path(core.force_xlsx(st.session_state.out)).is_file()
+        ok = True
+        if exists:
+            st.warning(f'這個檔案已經存在：{_label(core.force_xlsx(st.session_state.out))}')
+            ok = st.checkbox('確認覆蓋', key='ovw')
+        if st.button('▶ 產出 Excel', type='primary', disabled=not ok):
             st.session_state.log = []
             try:
                 core.write_excel(st.session_state.rows, st.session_state.out,

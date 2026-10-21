@@ -131,7 +131,8 @@ tr:hover td{filter:brightness(.985)}
 .miss{color:#c74343;font-style:italic}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px}
 .f-nc{background:#e8b931}.f-alt{background:#5aae62}.f-kn{background:#e8863a}
-.f-chk{background:#7c6cf0}
+.f-chk{background:#D92D20}
+.legend b{color:#3c4252}
 
 .kv{padding:10px 14px;font-size:12px}
 .kv .r{display:flex;justify-content:space-between;align-items:center;padding:4px 0;
@@ -169,6 +170,11 @@ tr:hover td{filter:brightness(.985)}
         padding:8px 12px;font-size:12px;margin-bottom:12px}
 .empty{padding:34px;text-align:center;color:#9aa0ae;font-size:13px}
 .switch{display:flex;align-items:center;gap:8px;font-size:12px;color:#3c4252}
+.switch.wide{grid-column:2/4;justify-content:flex-start}
+/* .form input{width:100%} 連 checkbox 都套到，勾選框被撐成整行寬，
+   看起來就變成「敘述靠左、勾選置中、說明靠右」。 */
+.form input[type=checkbox]{width:auto;flex:none;margin:0}
+.switch.wide span{color:#9aa0ae}
 </style></head>
 <body>
 <div class="app">
@@ -220,9 +226,8 @@ tr:hover td{filter:brightness(.985)}
           <span><span class="dot f-alt"></span>含替代料</span>
           <span><span class="dot f-kn"></span>Knowledge 命中</span>
           <span id="lgChk" style="display:none"><span class="dot f-chk"></span>
-            R8 降壓選料</span>
-          <span id="lgBad" style="display:none"><span class="dot"
-            style="background:#c74343"></span>Location 未知</span>
+            <b>R8 降壓選料</b></span>
+          <span id="lgBad" style="display:none">&#9888;&#65039; Location 未知</span>
         </div>
         <div class="rt"><span class="path" id="outpath2"></span>
           <button class="btn p" onclick="doExport()">▶ 產出 E-BOM</button></div>
@@ -308,10 +313,10 @@ function renderFiles(){
       <div class="hint">雙面板時提供兩張圖，圖片區會自動切成上下兩半。檔名含 top / bot 只是自動偵測的規則，手動指定任何檔案都可以；Top 與 Bot 選到同一張時會提醒確認</div>
       <label>輸出路徑</label><input id="outp" value="${esc(c.out||'')}"
              onchange="setCfg('out',this.value)"><button class="btn" onclick="browse('out')">變更…</button>
-      <label>替代料拆列</label>
-      <div class="switch"><input type="checkbox" id="split" ${c.split?'checked':''}
-           onchange="setCfg('split',this.checked)"> 一列只有一個 P/N（關閉則回到 v0.06 的 a;b 單列）</div>
-      <div></div>
+      <label></label>
+      <div class="switch wide"><input type="checkbox" id="split" ${c.split?'checked':''}
+           onchange="setCfg('split',this.checked)"><b>替代料拆列</b>
+           <span>一列只有一個 P/N（關閉則回到 v0.06 的 a;b 單列）</span></div>
       <label></label><div><button class="btn p" onclick="doMatch()">▶ 執行比對</button>
         <button class="btn" onclick="rescan()">↺ 重新掃描目錄</button></div><div></div>`;
 }
@@ -474,9 +479,18 @@ function upd(i,f,v){
 function busy(on){ document.querySelectorAll('.btn.p').forEach(b=>b.disabled=on); }
 function doMatch(){ if(!LIVE()) return; busy(true);
   api().run_match().then(st=>{ apply(st); busy(false); page('rows'); }); }
-function doExport(){ if(!LIVE()) return; busy(true);
-  api().export_excel().then(st=>{ apply(st); busy(false); page('out');
-    renderOut(); }); }
+function doExport(force){ if(!LIVE()) return;
+  // 直接讀輸入框的現值，不要只靠 onchange ——
+  // 使用者改完檔名直接按按鈕時，change 事件不一定趕得及送出去。
+  const el = document.getElementById('outp');
+  const p  = el && el.value.trim() ? el.value.trim() : (S.cfg.out||'');
+  api().path_exists(p).then(exists=>{
+    if(!force && exists && !confirm('這個檔案已經存在，要覆蓋嗎？\n\n' + p)) return;
+    busy(true);
+    api().export_excel(p).then(st=>{ apply(st); busy(false); page('out');
+      renderOut(); });
+  });
+}
 function browse(kind){ if(!LIVE()) return;
   api().browse(kind).then(st=>{ if(st) apply(st); }); }
 function rescan(){ if(!LIVE()) return; api().rescan().then(apply); }
@@ -633,11 +647,19 @@ class Api:
                 self.rows[idx][field] = str(value)
         return {'stats': core.stats(self.rows) if self.rows else {}}
 
-    def export_excel(self):
+    def path_exists(self, p):
+        try:
+            return bool(p) and Path(core.force_xlsx(str(p))).is_file()
+        except Exception:
+            return False
+
+    def export_excel(self, out_path=None):
         self.log = []
         try:
             if not self.rows:
                 raise ValueError('尚未執行比對')
+            if out_path and str(out_path).strip():
+                self.cfg['out'] = str(out_path).strip()
             core.write_excel(self.rows, self.cfg['out'],
                              self.cfg['pcb'] or None, self.hdr, log=self._log,
                              pcb_bot=self.cfg.get('pcb_bot') or None)
@@ -679,7 +701,7 @@ def _selftest():
         WIN.evaluate_js('upd(0,"qty","9")')
         time.sleep(1)
         out.append('after edit= ' + str(WIN.evaluate_js('JSON.stringify(S.stats)')))
-        WIN.evaluate_js('doExport()')
+        WIN.evaluate_js('doExport(true)')   # 略過覆蓋確認對話框
         time.sleep(5)
         out.append('log       = ' + str(WIN.evaluate_js('JSON.stringify(S.log)')))
       except Exception as e:

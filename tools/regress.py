@@ -1,4 +1,4 @@
-"""v0.08 vs v0.09 回歸：舊 BOM 的結果不可以退步。"""
+"""v0.09 vs v0.10 回歸：舊 BOM 的結果不可以退步。"""
 import importlib.util
 import os
 import sys
@@ -16,8 +16,8 @@ def load(f, n):
     return m
 
 
-v8 = load("bom_core_0.08.py", "v8")
-v9 = load("bom_core_0.09.py", "v9")
+v8 = load("bom_core_0.09.py", "v9")
+v9 = load("bom_core_0.10.py", "v10")
 
 CASES = [
     (r"TXT\S-M2P42280SMH086-20260812_1.BOM", r"ExcelDB\BOM_20260525.xlsx"),
@@ -25,7 +25,7 @@ CASES = [
     (r"TXT\SM8008_M2_D4X2_4G178_C261C_V1C_20261012.BOM.txt", r"ExcelDB\BOM_20261014.xlsx"),
 ]
 
-print("%-42s %-14s %-14s %-12s %s" % ("BOM", "v0.08 命中", "v0.09 命中", "Total Qty", "判定"))
+print("%-42s %-14s %-14s %-12s %s" % ("BOM", "v0.09 命中", "v0.10 命中", "Total Qty", "判定"))
 print("-" * 92)
 bad = 0
 for bom, db in CASES:

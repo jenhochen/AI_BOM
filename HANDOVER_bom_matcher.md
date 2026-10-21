@@ -5,7 +5,7 @@ Stanley（ADATA Technology）開發的 Python Windows 工具，讀取 Altium 格
 
 ---
 
-## 目前版本：v0.07
+## 目前版本：v0.10
 
 v0.07 起拆成「一個核心 + 兩套前端」。v0.06 的 tkinter GUI 已由 C / D 兩案取代。
 
@@ -210,6 +210,40 @@ v0.07 起 **逐列比對**（每個拆出來的 P/N 各自比對自己的描述�
 
 ---
 
+## v0.10 已完成（2026-10-21）
+
+待辦 T1–T5 全部做完，詳情見 `changelog_BOM_matcher_v0.10.txt`。重點：
+
+| 項目 | 結果 |
+|---|---|
+| T1　Location 加 (T)/(B) | `tag_side()` 冪等，手打過前綴不會疊成 `(T)(T)` |
+| T2　R8 電容降壓選料 | SM8008 命中 45 → **55**；Total Qty 384 **不變** |
+| T3　用語統一 | 位號→Location、面別→Top/Bot、chip→篩選鈕，三版掃過 |
+| T4　Top/Bot 同圖提示 | 不再靜默照貼；檔名規則只用於自動偵測 |
+| T5　SOP 標註式版面 | 31 頁，PPTX + HTML，`issues:[] deadLinks:0` |
+| 同名檔覆蓋確認 | core 警告 + C 勾選框 + D confirm |
+| 回歸 | 三份 BOM **零退步**，Total Qty 全部相同 |
+
+### R8 為什麼只放寬電容耐壓
+
+耐壓不足會縮短壽命但電路仍會動，看得到、可人工判斷。誤差與電流不符
+是功能性錯誤 —— 放寬等於讓程式替工程師做決定，所以 R6 的這兩條不動。
+
+### Streamlit 的 widget 值不是刪 session_state 就能重置
+
+v0.09 以為 `st.session_state.pop('sel_xxx')` 就能讓 `index` 重新生效，
+v0.10 實測發現**不夠**：widget 值綁在「widget 身分」上，同一個 key
+再建出來還是沿用舊值（目錄瀏覽器選了 pcb.jpg，下拉選單仍停在
+「手動輸入路徑」）。正解是在 key 後面接一個 `gen_xxx` 計數器，
+選檔時 +1，讓它變成新的 widget。
+
+另外，選完檔案**不可以**直接寫 `st.session_state['sel_xxx']` ——
+那個 selectbox 在同一次 run 裡早就建好了，會噴
+`StreamlitAPIException: cannot be modified after the widget ... is instantiated`。
+要先存 `pend_xxx` 再 `st.rerun()`，在 selectbox 建立之前套用。
+
+---
+
 ## v0.09 已完成（2026-10-19）
 
 上一版的待辦全部做完，詳情見 `changelog_BOM_matcher_v0.09.txt`。重點：
@@ -269,6 +303,12 @@ python tools/regress.py        # v0.08 vs v0.09，三份 BOM，任一退步就�
 
 ## 交付規格（v0.08 起，每次更新都做）
 
+> **★ 2026-10-21 起：每次產出新版本，一定要連 `dist\` 底下的
+> 「完整離線安裝版」與「精簡版」一起重建。**
+> 只更新 .py 不重建交付包，使用者拿到的還是舊版 —— 他們是從
+> `dist\` 解壓縮來用的，不是跑你專案目錄裡的檔案。
+> 指令：`python tools/build_dist.py`
+
 規格對齊 `F:\AI_ini_allin1` 的 ADATA SSD Firmware Tool。
 
 | 交付包 | 大小 | 內容 | 用在哪 |
@@ -321,51 +361,14 @@ python preview.py                        # 再用瀏覽器開 preview.html
 
 ## 待辦（下一版，等 Stanley 指定版號才動工）
 
-2026-10-20 提出，尚未實作。三個版本（CLI / Streamlit / pywebview）都要改。
+v0.10 的 T1–T5 全部完成，目前沒有待辦。
 
-### T1　Location 欄加 (T) / (B) 前綴
-`Location-Top Layer` 與 `Location-Bottom Layer` 兩欄的每個 Location，
-依所在層各自冠上 `(T)` / `(B)`：
+需要 Stanley 決定的事：
 
-```
-Location-Top Layer          Location-Bottom Layer
-(T)R49,(T)R50               (B)R80,(B)R82
-```
-
-改動點：`bom_core` 的 `_write_data_row()`（`ref_top` / `ref_bot` 兩欄），
-以及 C / D 兩案表格預覽的同兩欄。`ref_unk` 欄不加前綴（本來就不知道是哪一層）。
-
-### T2　電容降壓選料規則（R8）
-容值與封裝一致、但 DB 耐壓**低於**設計值時：**可以選**，但 Description 必須加註記。
-
-```
-原始設計 : 4.7uF/10V 0402
-DB 只有  : 4.7uF/6.3V 0402
-輸出      : 4.7uF/6.3V 0402 (原始設計為10V, 請再確認)
-```
-
-- 只放寬**電容的耐壓**；電流（`amp`）、誤差（`tol`）維持 R6 不放寬。
-- 這類列要標色並列進圖例，讓人一眼看到「這幾項要人工確認」。
-- 排序：耐壓完全符合的優先；都不符合時取耐壓最接近設計值的。
-- **實測影響（SM8008 / BOM_20261014）：10 項電容會從空白變成有料號**，
-  其中 `4.7uF/25V 0402 → 6.3V` 是 4 倍降壓，風險最高，註記一定要明顯。
-
-### T3　「chip」改用詞
-`bom_matcher_D_0.09.py` 的篩選按鈕列、SOP、changelog 一律改稱 **篩選鈕**。
-同時 `FILTERS` 裡的 `位號未知` 依用語規範改成 **Location 未知**。
-
-### T4　TOP / BOT 選到同一張圖要提示確認
-不是程式自己判斷，而是**提示使用者確認**：
-`[提醒] TOP 與 BOT 指到同一張圖片（pcb.jpg），確認無誤才按產出`
-確認後照貼兩張（上下兩半都是同一張），不要自己改成單面板。
-
-> `pcb_top.jpg` / `pcb_bot.jpg` 的檔名規則**只用於自動偵測**，不是必要條件；
-> 使用者手動指定任何兩個檔案都算數。三個版本的說明文字要寫清楚這一點。
-
-### T5　SOP 改成「標註式」版面
-`docs\sop\build.js` 的 `kind:'shot'` 加 `marks:[{n,x,y}]`（x/y 用截圖原始像素座標），
-在截圖上疊紅色編號圓點，右側 bullets 前面帶同一組編號。
-預覽圖：`screenshot\SOP_step2_preview.png`（方案 A）。
+- C/D 介面的 Location 欄顯示**不含** `(T)` / `(B)` 前綴，前綴只在寫入 Excel 時才加。
+  這樣做是因為那兩欄可以直接編輯，顯示前綴會讓改過的值被重複加工（`tag_side()`
+  已做成冪等所以不會出錯）。要不要改成畫面也顯示前綴？
+- 真正的 TOP / BOT 兩張 PCB 圖還沒拿到，目前都指到同一張 `pcb.jpg`。
 
 ---
 

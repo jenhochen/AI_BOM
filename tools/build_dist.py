@@ -30,7 +30,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-VER = "0.09"
+VER = "0.10"
 PY_VER = "3.14.4"
 PY_EXE = f"python-{PY_VER}-amd64.exe"
 PY_URL = f"https://www.python.org/ftp/python/{PY_VER}/{PY_EXE}"
@@ -60,7 +60,7 @@ SOP = [f"BOM_Matcher_v{VER}_操作SOP.pptx",
 SAMPLE = {
     "TXT": ["SM8008_M2_D4X2_4G178_C261C_V1C_20261012.BOM.txt",
             "S-M2P42280SMH086-20260812_1.BOM"],
-    # v0.09：位號對照表一併附上，讓交付包可以直接示範雙面板模式
+    # v0.09：Location 對照表一併附上，讓交付包可以直接示範雙面板模式
     "ExcelDB": ["BOM_20261014.xlsx", "SM8008_M2_Location_TOP_BOT.xlsx"],
 }
 EXTRA_KNOWLEDGE = "Layout and BOM Knowledge_20260624.xlsx"   # 放進 ExcelDB\
@@ -350,39 +350,45 @@ Altium Text BOM + Excel 零件資料庫  →  ADATA E-BOM 格式 Excel
       解析 Text BOM: 112 項
       讀取零件資料庫: 153 筆
       載入 Knowledge: 6 筆
-      比對完成: 命中 26 / 未命中 87 / 替代料群組 20 / Knowledge 命中 4 列
-      113 項（含PCB）→ 138 列（替代料拆出 25 列）  |  Total Qty = 384
+      載入 Location 對照表: 381 筆（Top 167 / Bot 214）→ 雙面板模式
+      比對完成: 命中 55 / 未命中 58 / 替代料群組 29 / Knowledge 命中 4 列
+      113 項（含PCB）→ 151 列（替代料拆出 38 列）  |  Total Qty = 384
 
   C 案、D 案跑同一份資料，數字必須完全一樣。
 
 
 ■ v{VER} 的重點
 
-  • 比對改成「屬性式」：Part 拆成 值／耐壓／誤差／電流 再比對，
-    不再拿整串去 DB 描述裡找子字串。SM8008 命中 26 → 45
-  • NC(...) 括號式終於認得出來（SM8008 有 26 項，舊版全部漏判）
-  • 未命中會印出原因分佈，不再靜默留白 ——
-    格式一變當場就看得到，不必等人工核對產出
-  • 雙面板：給位號對照表就多一欄 Location-Bottom Layer；
+  • Location-Top / Location-Bottom 兩欄的每個 Location 加上 (T) / (B)
+        (T)BC26,(T)C76,(T)C81        (B)BC28,(B)C55,(B)C56
+  • R8 電容降壓選料：容值與封裝一致、但 DB 耐壓低於原始設計時可以選，
+    Description 自動加註「(原始設計為10V, 請再確認)」，該列標紫底。
+    SM8008 命中 45 → 55（+10 項電容），Total Qty 不變。
+    只放寬電容耐壓 —— 電流與誤差不放寬，那是功能性錯誤。
+  • 輸出路徑已經有同名檔時會先問，不會無聲蓋掉
+  • 用語統一：位號 → Location、面別 → Top/Bot、chip → 篩選鈕
+  • 操作 SOP 改成標註式版面：截圖上標 ①②③，右側說明同號對應
+  • 雙面板：給 Location 對照表就多一欄 Location-Bottom Layer；
     PCB 圖片放兩張（檔名含 top / bot）會自動切成上下兩半
-  • 位號對不上時三層警告：日誌、Excel 淡紅底、紅字寫出是哪幾個
+  • Location 對不上時三層警告：日誌、Excel 淡紅底、紅字寫出是哪幾個
 
   完整清單見 changelog_BOM_matcher_v{VER}.txt
 
 
 ■ 雙面板怎麼用（選用）
 
-  1. 位號對照表放進 ExcelDB\\（或程式資料夾）
-     第一欄＝位號，第二欄＝面別（TOP / BOT）
+  1. Location 對照表放進 ExcelDB\\（或程式資料夾）
+     第一欄＝Location，第二欄＝Top/Bot（TOP / BOT）
      xlsx 為主要格式，txt 亦可
-  2. PCB 圖片放兩張，檔名含 top / bot
+  2. PCB 圖片放兩張。檔名含 top / bot 會自動配對，手動指定任何兩個
+     檔案也可以，不受檔名限制。Top 與 Bot 選到同一張時會提醒確認
      例：screenshot\\pcb_top.jpg、screenshot\\pcb_bot.jpg
   3. 執行比對 —— 日誌出現「→ 雙面板模式」就對了
 
-  沒有位號對照表就是單面板，輸出與 v0.08 完全相同。
+  沒有 Location 對照表就是單面板，輸出與 v0.08 完全相同。
 
   ★ 對照表與 BOM 必須是同一個改版。本包附的 SM8008 範例刻意保留了
-    6 個對不上的位號，可以看到警告長什麼樣子。
+    6 個對不上的 Location，可以看到警告長什麼樣子。
 
 
 ■ 常見問題
