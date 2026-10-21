@@ -210,6 +210,213 @@ v0.07 起 **逐列比對**（每個拆出來的 P/N 各自比對自己的描述�
 
 ---
 
+## v0.09 已完成（2026-10-19）
+
+上一版的待辦全部做完，詳情見 `changelog_BOM_matcher_v0.09.txt`。重點：
+
+| 項目 | 結果 |
+|---|---|
+| 比對規則 R1–R7 | SM8008 命中 26 → **45**；三份 BOM 回歸**零退步** |
+| 單面板相容 | 與 v0.08 逐格比對 **0 差異**（合併數同為 107） |
+| NC(...) 剝除 | SM8008 的 nc 由 0 → **26** |
+| 雙面板 | F/G 兩欄、位號對照表、三層警告、圖片切兩半 |
+
+### 比對的三條鐵則（之後改比對邏輯前先看這個）
+
+1. **不要用整串 Part 去 Description 找子字串。** 格式一變就全找不到，
+   而且是靜默失敗。要先 `parse_part()` 拆成屬性再比。
+2. **比對順序是「屬性式 → 子字串」，不可對調。** 子字串是 v0.08 的舊路徑，
+   留著當退路，保證舊 BOM 不退步。改動時務必跑回歸（見下）。
+3. **未命中一定要歸因（R7）。** 靜默留白是 v0.08 最大的問題 ——
+   32 項電容全軍覆沒卻沒人發現。
+
+### R6 方向性條件容易誤判為 bug
+
+耐壓／電流 **DB ≥ BOM**、誤差 **DB ≤ BOM**。所以會出現
+「DB 明明有這個值卻沒命中」的情況，那多半是**正確的**：
+
+- `NC(100R_1%)` 不採用 `61031353`（5% 誤差超過要求的 1%）
+- `FB/120R/55mR/2A` 不採用 120Ω BEAD（DB 只有 1.2~1.4A，不足 2A）
+
+診斷會把這類歸到「規格不符（耐壓/電流/誤差）」，與「DB 沒有這個值」分開。
+
+### 回歸測試（改比對邏輯後必跑）
+
+```bash
+python tools/regress.py        # v0.08 vs v0.09，三份 BOM，任一退步就算失敗
+```
+
+判定標準：**命中數只能增不能減，Total Qty 必須完全相同。**
+
+---
+
+## 雙面板
+
+| 項目 | 說明 |
+|---|---|
+| 觸發條件 | 有載入位號對照表就是雙面板；沒有就退回單面板，輸出與 v0.08 相同 |
+| 對照表格式 | **第一欄＝位號、第二欄＝面別**。xlsx 為主、txt 為輔 |
+| 不可用表頭名判斷 | 實際檔案 TXT 是 `T/B`、XLSX 是 `T_B`，兩者不一致 |
+| 面別寫法 | TOP/T/TOP SIDE/F/FRONT、BOT/B/BOTTOM/BACK 都接受 |
+| 放哪裡 | 程式目錄或 `ExcelDB\`（`find_side_tables` 掃這兩處） |
+| PCB 圖片 | 檔名含 top / bot 才會切兩半，例 `pcb_top.jpg` / `pcb_bot.jpg`；只有一張就不切 |
+| 位號對不上 | 日誌＋Excel 淡紅底＋紅字；反向檢查也提示 |
+
+⚠️ **對照表與 BOM 必須是同一個改版。** SM8008 實測兩份差了 6+4 個位號，
+這通常代表版本不同步，不是單純「少幾個位號」。
+
+---
+
+## 交付規格（v0.08 起，每次更新都做）
+
+規格對齊 `F:\AI_ini_allin1` 的 ADATA SSD Firmware Tool。
+
+| 交付包 | 大小 | 內容 | 用在哪 |
+|---|---|---|---|
+| `dist\BOM_Matcher_v<VER>_完整離線安裝版` | ~113 MB | 精簡版 ＋ `python\`（Python 安裝檔）＋ `wheels\`（47 個離線套件） | 產線機器、連不上外網 |
+| `dist\BOM_Matcher_v<VER>_精簡版` | ~0.6 MB | 程式 ＋ 範例資料 ＋ SOP | 辦公室機器，安裝時上網抓套件 |
+
+兩包都含 `安裝.bat`、`安裝說明.txt`、`docs\*_操作SOP.pptx`。
+程式本體與範例資料完全相同，差別只在「套件怎麼來」。
+
+```bash
+python tools/build_dist.py                   # 產出兩包
+python tools/build_dist.py --refresh-wheels  # 先重抓 wheels 再打包
+python tools/build_dist.py --slim-only       # 只要精簡版
+```
+
+⚠️ `proxy_tools`（pywebview 的相依）**只有 sdist 沒有 wheel**，所以
+`pip download` 不能加 `--only-binary=:all:`，而且 wheels 裡必須一併放
+`setuptools` 與 `wheel`，否則目標機器離線時建不起來。
+
+---
+
+## 操作 SOP
+
+產出物：`docs\BOM_Matcher_v<VER>_操作SOP.pptx`（24 頁）
+
+| 檔案 | 作用 |
+|---|---|
+| `docs/sop/content.js` | **全部文字內容**。要改字只動這一支 |
+| `docs/sop/layout.js` | 投影片尺寸與邊界常數 |
+| `docs/sop/build.js` | 產出 .pptx（pptxgenjs） |
+| `docs/sop/preview.py` | **從產出的 .pptx 反向解析實際座標**畫成 preview.html |
+| `docs/sop/shots/` | 9 張實機截圖（D 案用 PrintWindow 擷取視窗，非螢幕截圖） |
+
+```bash
+cd docs/sop && npm install pptxgenjs     # 第一次
+node build.js
+node <pptx-skill>/scripts/apply_theme.js ../BOM_Matcher_v0.08_操作SOP.pptx theme.tmp.json
+python preview.py                        # 再用瀏覽器開 preview.html
+```
+
+`preview.py` 刻意**不是**重畫一份版面 —— 重畫的預覽只能證明「我以為的座標」
+沒爆框，證明不了 pptx 裡真正的座標。它直接讀 pptx 的 EMU 座標畫成 HTML，
+載入後的 JS 會自動掃描「超出投影片邊界」與「文字爆框」並標紅。
+
+這台機器沒有 LibreOffice，所以不能用 pptx skill 文件裡的
+`soffice --convert-to pdf` + `pdftoppm` 做視覺 QA，preview.html 是替代方案。
+
+---
+
+## 待辦（下一版，等 Stanley 指定版號才動工）
+
+2026-10-20 提出，尚未實作。三個版本（CLI / Streamlit / pywebview）都要改。
+
+### T1　Location 欄加 (T) / (B) 前綴
+`Location-Top Layer` 與 `Location-Bottom Layer` 兩欄的每個 Location，
+依所在層各自冠上 `(T)` / `(B)`：
+
+```
+Location-Top Layer          Location-Bottom Layer
+(T)R49,(T)R50               (B)R80,(B)R82
+```
+
+改動點：`bom_core` 的 `_write_data_row()`（`ref_top` / `ref_bot` 兩欄），
+以及 C / D 兩案表格預覽的同兩欄。`ref_unk` 欄不加前綴（本來就不知道是哪一層）。
+
+### T2　電容降壓選料規則（R8）
+容值與封裝一致、但 DB 耐壓**低於**設計值時：**可以選**，但 Description 必須加註記。
+
+```
+原始設計 : 4.7uF/10V 0402
+DB 只有  : 4.7uF/6.3V 0402
+輸出      : 4.7uF/6.3V 0402 (原始設計為10V, 請再確認)
+```
+
+- 只放寬**電容的耐壓**；電流（`amp`）、誤差（`tol`）維持 R6 不放寬。
+- 這類列要標色並列進圖例，讓人一眼看到「這幾項要人工確認」。
+- 排序：耐壓完全符合的優先；都不符合時取耐壓最接近設計值的。
+- **實測影響（SM8008 / BOM_20261014）：10 項電容會從空白變成有料號**，
+  其中 `4.7uF/25V 0402 → 6.3V` 是 4 倍降壓，風險最高，註記一定要明顯。
+
+### T3　「chip」改用詞
+`bom_matcher_D_0.09.py` 的篩選按鈕列、SOP、changelog 一律改稱 **篩選鈕**。
+同時 `FILTERS` 裡的 `位號未知` 依用語規範改成 **Location 未知**。
+
+### T4　TOP / BOT 選到同一張圖要提示確認
+不是程式自己判斷，而是**提示使用者確認**：
+`[提醒] TOP 與 BOT 指到同一張圖片（pcb.jpg），確認無誤才按產出`
+確認後照貼兩張（上下兩半都是同一張），不要自己改成單面板。
+
+> `pcb_top.jpg` / `pcb_bot.jpg` 的檔名規則**只用於自動偵測**，不是必要條件；
+> 使用者手動指定任何兩個檔案都算數。三個版本的說明文字要寫清楚這一點。
+
+### T5　SOP 改成「標註式」版面
+`docs\sop\build.js` 的 `kind:'shot'` 加 `marks:[{n,x,y}]`（x/y 用截圖原始像素座標），
+在截圖上疊紅色編號圓點，右側 bullets 前面帶同一組編號。
+預覽圖：`screenshot\SOP_step2_preview.png`（方案 A）。
+
+---
+
+## 用語規範（2026-10-20 起，Stanley 指定）
+
+**只准用輸出檔裡已經存在的欄位名稱，不要另外發明中文名詞。**
+
+| 要講的東西 | ✅ 用這個 | ❌ 不要用 |
+|---|---|---|
+| P/N 欄位的值（料件編號） | **料號** 或 `P/N` | 零件號、品號 |
+| `R48` `U13` 這種標示（Location 欄的值） | **Location** | 位號、參考編號、reference designator |
+| 正反面 | **Top / Bot**，或欄名全寫 `Location-Top Layer` / `Location-Bottom Layer` | 面別、面號、正反面別 |
+
+適用範圍：對話回覆、程式內的訊息與警告文字、Excel 欄位與圖例、SOP、changelog，全部一致。
+
+例：
+- ❌ `⚠ 4 個位號查不到面別：R48,R54,R298,R299`
+- ✅ `⚠ 4 個 Location 查不到 Top/Bot：R48,R54,R298,R299`
+
+---
+
+## ★ 三個版本必須同步（2026-10-20 起強制）
+
+> **任何需求、修正、用語改動，一律同時套用到三個版本，並三個都實測過才算完成。**
+
+| 版本 | 檔案 | 怎麼算過關 |
+|---|---|---|
+| CLI | `run_CLI.bat` → `bom_core_0.XX.py` 的 `main()` | 真實 cmd 跑完，訊息與產出都正確 |
+| Streamlit（C 案） | `bom_matcher_C_0.XX.py` | 真實瀏覽器操作過該功能 |
+| pywebview（D 案） | `bom_matcher_D_0.XX.py` | 視窗開起來截圖，或 `--selftest` 跑完並貼結果 |
+
+共用邏輯一律放 `bom_core`，前端只做 UI；但**前端的文字、欄位、提示也要一起改**，
+不能只改 core 就宣稱三版都好了。回報時三個版本的執行結果分開貼。
+
+---
+
+### 程式進版必須同步更新 SOP（2026-10-20 起強制）
+
+版號一動，SOP 就要跟著走完這條流程，**不可以只改程式不改 SOP**：
+
+1. 重新截圖：介面有變的頁面重拍，放進 `docs\sop\shots\`
+2. 改文字：只動 `docs\sop\content.js`（`VER` / `DATE` 也要改）
+3. 重建：`node docs/sop/build.js` → 產出 `docs\BOM_Matcher_vX.XX_操作SOP.pptx`
+4. 驗證：`python docs/sop/validate.py` 必須 All validations PASSED
+5. HTML：`python docs/sop/preview.py` → QA 必須 `deadLinks:0`、`imgFail:0`、`issues:[]`
+6. 兩種格式都要進交付包（PPTX ＋ HTML），目錄超連結都要能跳
+
+SOP 的截圖以 **D 案（pywebview）** 為主，C 案只放差異頁。
+
+---
+
 ## 工作慣例
 
 - 程式碼不主動產出，等 Stanley 明確說「請產出程式」才產出
