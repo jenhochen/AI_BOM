@@ -175,11 +175,28 @@ tr:hover td{filter:brightness(.985)}
    看起來就變成「敘述靠左、勾選置中、說明靠右」。 */
 .form input[type=checkbox]{width:auto;flex:none;margin:0}
 .switch.wide span{color:#9aa0ae}
+
+/* v0.10：ADATA LOGO（比照 Firmware Tool）。蜂鳥圖為橫向白底，用 contain 等比縮放。
+   ⚠️ -webkit-user-drag / user-select 不是美化 —— 沒有它們，按住 Shift 拖圖會啟動
+      瀏覽器原生的圖片拖曳，pointerdown 之後的連點就收不到。 */
+.brand img.m{width:44px;height:30px;object-fit:contain;background:#fff;
+             border:1px solid #E8EAED;border-radius:7px;padding:2px;
+             -webkit-user-drag:none;user-select:none}
+.egg{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;
+     align-items:center;justify-content:center;z-index:99}
+.egg[hidden]{display:none}
+.egg-box{background:#0b1220;padding:10px;border-radius:14px;
+         box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.egg-hd{display:flex;justify-content:space-between;align-items:center;margin:0 2px 6px;
+        font:600 11px Consolas,monospace;letter-spacing:2px;color:rgba(226,232,240,.55)}
+.egg-hd button{background:none;border:none;color:rgba(226,232,240,.75);font-size:15px;
+               cursor:pointer;padding:0 4px}
+.egg canvas{display:block;border-radius:8px}
 </style></head>
 <body>
 <div class="app">
   <aside class="sb">
-    <div class="brand"><div class="m">B</div>
+    <div class="brand">__LOGO_TAG__
       <div><b>BOM Matcher</b><span id="ver">E-BOM workspace</span></div></div>
     <div class="grp">WORKFLOW</div>
     <button class="nav on" data-p="files"><span class="ic">▤</span>檔案設定<span class="bdg" id="bd-files">-</span></button>
@@ -189,6 +206,11 @@ tr:hover td{filter:brightness(.985)}
     <button class="nav" data-p="out"><span class="ic">↓</span>產出 E-BOM</button>
     <div class="sbfoot" id="sbfoot"></div>
   </aside>
+  <!-- v0.10 彩蛋：沒有開關、沒有提示（比照 Firmware Tool）。✕ 與 Esc 都能關。 -->
+  <div class="egg" id="egg" hidden onpointerdown="if(event.target===this) eggClose()">
+    <div class="egg-box"><div class="egg-hd"><span>BEE</span>
+      <button onclick="eggClose()" title="關閉">✕</button></div>
+      <canvas id="eggcv" width="420" height="520"></canvas></div></div>
 
   <section class="ct">
     <div class="ct-hd">
@@ -497,8 +519,31 @@ function rescan(){ if(!LIVE()) return; api().rescan().then(apply); }
 function openOut(){ if(LIVE()) api().open_output(); }
 
 /* 先畫一個空殼，避免載入瞬間空白 */
-S.ver='0.07'; S.disc={base:'',txts:[],dbs:[],kns:[],imgs:[]};
+S.ver='__VER__'; S.disc={base:'',txts:[],dbs:[],kns:[],imgs:[]};
 S.cfg={bom:'',db:'',kn:'',pcb:'',out:'',split:true}; S.hdr={}; renderAll();
+
+/* ── v0.10 彩蛋：按住 Shift 連點三次 LOGO ──────────────────────────────
+   ⚠️ 監聽 pointerdown 不是 click：<img> 的原生拖曳會把 click 吃掉。 */
+/*__BEE_GAME__*/
+let eggN=0, eggT=0, eggStop=null;
+function eggOpen(){
+  document.getElementById('egg').hidden=false;
+  if(eggStop) eggStop();
+  eggStop = bmBeeGame(document.getElementById('eggcv'), eggClose);
+}
+function eggClose(){
+  if(eggStop){ eggStop(); eggStop=null; }   // 收掉動畫與鍵盤監聽，否則方向鍵會繼續被吃
+  document.getElementById('egg').hidden=true;
+}
+const LOGO = document.getElementById('logo');
+if(LOGO) LOGO.addEventListener('pointerdown', e=>{
+  if(!e.shiftKey){ eggN=0; return; }
+  e.preventDefault();                       // Shift+點擊會選取文字
+  const now=Date.now();
+  if(now-eggT > __EGG_MS__) eggN=0;
+  eggT=now;
+  if(++eggN >= __EGG_N__){ eggN=0; eggOpen(); }
+});
 
 window.addEventListener('pywebviewready', ()=>{
   document.getElementById('banner').innerHTML='';
@@ -552,7 +597,9 @@ class Api:
             'item': r['item'], 'rcec': r['rcec'], 'pn': r['pn'], 'desc': r['desc'],
             'qty': r['qty'], 'ref': r['ref'], 'nc': r['nc'], 'alt': r['alt'],
             'group': r['group'], 'kn': r['kn'], 'fp': r['fp'], 'part': r['part'],
-            'ref_top': r.get('ref_top', ''), 'ref_bot': r.get('ref_bot', ''),
+            # v0.10：畫面也顯示 (T)/(B)，與輸出 Excel 一致（tag_side 冪等）
+            'ref_top': core.tag_side(r.get('ref_top', ''), 'T'),
+            'ref_bot': core.tag_side(r.get('ref_bot', ''), 'B'),
             'ref_unk': r.get('ref_unk', ''), 'chk': bool(r.get('chk')),
         } for r in self.rows]
 
@@ -715,10 +762,22 @@ def _selftest():
     return out
 
 
+def page_html():
+    """HTML 裡的佔位字串換成實際內容（LOGO、版號、彩蛋遊戲）。"""
+    logo = core.app_logo_uri()
+    tag = (f'<img class="m" id="logo" src="{logo}" draggable="false" alt="ADATA">'
+           if logo else '<div class="m">B</div>')
+    return (HTML.replace('__LOGO_TAG__', tag)
+                .replace('__VER__', core.VERSION)
+                .replace('__EGG_MS__', str(core.EGG_WINDOW_MS))
+                .replace('__EGG_N__', str(core.EGG_CLICKS))
+                .replace('/*__BEE_GAME__*/', core.BEE_GAME_JS))
+
+
 def main():
     if '--dump-html' in sys.argv:
         out = APP_DIR / 'preview_D_ui.html'
-        out.write_text(HTML, encoding='utf-8')
+        out.write_text(page_html(), encoding='utf-8')
         print(f'✓ UI HTML 已輸出: {out}')
         return 0
 
@@ -726,7 +785,7 @@ def main():
     import webview
     api = Api()
     WIN = webview.create_window(
-        APP_TITLE, html=HTML, js_api=api,
+        APP_TITLE, html=page_html(), js_api=api,
         width=1280, height=820, min_size=(1080, 680))
 
     result = _selftest() if '--selftest' in sys.argv else None

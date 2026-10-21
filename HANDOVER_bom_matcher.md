@@ -363,12 +363,44 @@ python preview.py                        # 再用瀏覽器開 preview.html
 
 v0.10 的 T1–T5 全部完成，目前沒有待辦。
 
-需要 Stanley 決定的事：
+### 待決定項目
 
-- C/D 介面的 Location 欄顯示**不含** `(T)` / `(B)` 前綴，前綴只在寫入 Excel 時才加。
-  這樣做是因為那兩欄可以直接編輯，顯示前綴會讓改過的值被重複加工（`tag_side()`
-  已做成冪等所以不會出錯）。要不要改成畫面也顯示前綴？
-- 真正的 TOP / BOT 兩張 PCB 圖還沒拿到，目前都指到同一張 `pcb.jpg`。
+| # | 項目 | 提出日 | 狀態 |
+|---|---|---|---|
+| Q1 | C/D 介面 Location 欄也顯示 (T)/(B) | 2026-10-21 | **已實作**，等 Stanley 確認要不要留 |
+| Q2 | 真正的 TOP / BOT 兩張 PCB 圖 | 2026-10-21 | 等提供檔案 |
+| Q3 | Streamlit 右上角 Deploy 與 ⋮ 選單 | 2026-10-21 | **已處理**（toolbarMode = viewer）|
+
+**Q1　Location 欄顯示前綴 —— 已實作**
+C 案 `_rows_to_df()`、D 案 `_rows_js()` 都套上 `core.tag_side()`，
+畫面與輸出 Excel 一致。改過的值寫回 `ref_top` / `ref_bot` 會帶著前綴，
+寫 Excel 時 `tag_side()` 冪等，不會疊成 `(T)(T)`。
+
+要改回「畫面不顯示前綴」只要拿掉那兩處 `core.tag_side()`。
+
+修改前後對照（SM8008 實際資料）：
+`screenshot0.10_D_Location前綴_修改前後.png`、
+`screenshot0.10_C_Location前綴_修改前後.png`
+
+★ 代價：每個 Location 多 3 個字元，欄寬不變的話一格看得到的會變少
+（例：Item 3 的 Location-Top 完整看得到的從約 7 個變 4 個）。
+Stanley 看過預覽圖後如果覺得不划算，就改回去。
+
+**Q2　TOP / BOT 兩張 PCB 圖 —— 等檔案**
+目前 TOP / BOT 都指到同一張 `pcb.jpg`，雙面板圖片區上下兩半是同一張圖
+（程式會提醒「Top 與 Bot 指到同一張圖片」）。
+拿到後放進 `screenshot\`，檔名含 top / bot（例 `pcb_top.jpg` / `pcb_bot.jpg`）
+就會自動配對；之後要重拍 SOP 雙面板相關截圖並重建交付包。
+
+**Q3　Streamlit 右上角 Deploy 與 ⋮ 選單 —— 已處理**
+`.streamlit\config.toml` 加了 `[client] toolbarMode = "viewer"`，
+把 Deploy 按鈕與開發者選項（Rerun / Clear cache）藏起來。
+Deploy 是把程式發佈到 Streamlit 雲端，對內部工具沒有用途，
+而且有外流原始碼與資料的風險。
+
+★ 這個設定只有在交付包裡的 `.streamlit\config.toml` 一起帶出去才有效 ——
+打包時務必確認這個資料夾有進去（PowerShell 壓縮常漏掉 dot 開頭資料夾，
+見交付前檢查清單第 7 項）。
 
 ---
 

@@ -1597,6 +1597,330 @@ def report_sides(rows: list, sides: dict, log=print):
 
 
 # ════════════════════════════════════════════════════════════════════════════════
+# 14b. v0.10：品牌 LOGO 與彩蛋（C / D 兩案共用）
+# ════════════════════════════════════════════════════════════════════════════════
+#
+#  比照 ADATA SSD Firmware Tool v1.37 P-21：左上角換成 ADATA 蜂鳥 LOGO，
+#  **按住 Shift 連點三次 LOGO** → 小蜜蜂遊戲。沒有開關、預設沒有任何提示。
+#
+#  ⚠️ Firmware Tool 踩過的坑，這裡照抄避開：
+#     `<img>` 的原生拖曳會把 click 吃掉（按下後位移一兩個 pixel 就判定成
+#     拖曳圖片），所以**一定要監聽 pointerdown、圖片要 draggable=false**。
+#  ⚠️ 遊戲視窗一定要有 ✕ 關閉鈕，Esc 也要能關（Firmware Tool 實測過
+#     Esc 關不掉，被抱怨過）。
+
+EGG_CLICKS = 3          # 需要的點擊次數
+EGG_WINDOW_MS = 3000    # 連點時限（毫秒）
+
+
+def app_logo_uri():
+    """程式目錄下的 adata.png → data URI；找不到回傳 None（前端回退成字母徽章）。
+    內嵌成 data URI，不必另外掛靜態目錄，搬移資料夾也不會失效。"""
+    import base64
+    for name, mime in (('adata.png', 'image/png'), ('logo.png', 'image/png')):
+        p = APP_DIR / name
+        if p.is_file():
+            try:
+                return f'data:{mime};base64,' + base64.b64encode(p.read_bytes()).decode()
+            except OSError:
+                return None
+    return None
+
+
+# 遊戲本體。定義全域函式 bmBeeGame(canvas, onExit) → 回傳 stop()。
+# 鍵盤：← → 移動、Space 射擊、P 暫停、R 重來、Esc 關閉（呼叫 onExit）。
+BEE_GAME_JS = r"""
+window.bmBeeGame = function (cv, onExit) {
+  var g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  var RED = '#E90023';
+  var keys = {}, raf = 0, last = 0, S = null, cool = 0;
+  var hi = 0;
+  try { hi = +localStorage.getItem('bm_bee_hi') || 0; } catch (e) {}
+
+  var stars = [];
+  for (var i = 0; i < 70; i++) {
+    stars.push({x: Math.random() * W, y: Math.random() * H,
+                v: 15 + Math.random() * 60, a: .25 + Math.random() * .6});
+  }
+
+  function newGame() {
+    S = {score: 0, lives: 3, wave: 0, over: false, paused: false,
+         parts: [], t: 0};
+    nextWave();
+    resetPlayer();
+  }
+
+  function resetPlayer() {
+    S.p = {x: W / 2, y: H - 46, inv: 2.0};
+    S.shots = []; S.ebul = [];
+    S.bees.forEach(function (b) {          // 俯衝中的蜜蜂先回隊伍
+      if (b.st === 'dive') { b.st = 'enter'; b.y = -30; }
+    });
+  }
+
+  function nextWave() {
+    S.wave++; S.bees = []; S.t = 0; S.banner = 1.8;
+    S.diveCd = 2.2;
+    for (var r = 0; r < 4; r++) {
+      for (var c = 0; c < 8; c++) {
+        if (r === 0 && (c === 0 || c === 7)) { continue; }   // 頭目只有 6 隻
+        S.bees.push({r: r, c: c, boss: r === 0, hp: r === 0 ? 2 : 1,
+                     st: 'enter', x: W / 2 + (c - 3.5) * 40,
+                     y: -40 - r * 46 - c * 12, vx: 0, vy: 0, t: 0, fire: 0});
+      }
+    }
+  }
+
+  function slot(b) {
+    var sway = Math.sin(S.t * .8) * 34;
+    var br = 1 + Math.sin(S.t * 1.7) * .05;
+    return {x: W / 2 + (b.c - 3.5) * 40 * br + sway, y: 78 + b.r * 36};
+  }
+
+  function boom(x, y, c, n) {
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * 6.283, v = 40 + Math.random() * 160;
+      S.parts.push({x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+                    life: .5 + Math.random() * .4, c: c});
+    }
+  }
+
+  function near(a, b, r) {
+    var dx = a.x - b.x, dy = a.y - b.y;
+    return dx * dx + dy * dy < r * r;
+  }
+
+  function update(dt) {
+    S.t += dt;
+    if (S.banner > 0) { S.banner -= dt; }
+    var p = S.p, spd = 230;
+
+    // 玩家
+    if (keys.ArrowLeft) { p.x -= spd * dt; }
+    if (keys.ArrowRight) { p.x += spd * dt; }
+    p.x = Math.max(18, Math.min(W - 18, p.x));
+    if (p.inv > 0) { p.inv -= dt; }
+    cool -= dt;
+    if (keys[' '] && cool <= 0 && S.shots.length < 2) {
+      S.shots.push({x: p.x, y: p.y - 14});
+      cool = .26;
+    }
+    S.shots.forEach(function (s) { s.y -= 460 * dt; });
+    S.shots = S.shots.filter(function (s) { return s.y > -10; });
+
+    // 蜜蜂
+    var lv = Math.min(S.wave - 1, 8);
+    S.diveCd -= dt;
+    var inForm = S.bees.filter(function (b) { return b.st === 'form'; });
+    if (S.diveCd <= 0 && inForm.length) {
+      var d = inForm[Math.floor(Math.random() * inForm.length)];
+      d.st = 'dive'; d.t = 0; d.fire = .4 + Math.random() * .6;
+      S.diveCd = Math.max(.55, 2.0 - lv * .17) * (.6 + Math.random() * .8);
+    }
+    S.bees.forEach(function (b) {
+      var s = slot(b);
+      if (b.st === 'enter') {
+        var dx = s.x - b.x, dy = s.y - b.y, L = Math.sqrt(dx * dx + dy * dy);
+        var v = 260 * dt;
+        if (L <= v) { b.x = s.x; b.y = s.y; b.st = 'form'; }
+        else { b.x += dx / L * v; b.y += dy / L * v; }
+      } else if (b.st === 'form') {
+        b.x = s.x; b.y = s.y;
+      } else {                                   // dive
+        b.t += dt;
+        b.vy = 150 + lv * 18;
+        b.vx = Math.sin(b.t * 3.2) * 130 + (p.x - b.x) * .9;
+        b.x += b.vx * dt; b.y += b.vy * dt;
+        b.fire -= dt;
+        if (b.fire <= 0 && b.y < p.y - 60) {
+          var ax = (p.x - b.x) / Math.max(60, p.y - b.y);
+          S.ebul.push({x: b.x, y: b.y + 10, vx: ax * 200, vy: 220 + lv * 12});
+          b.fire = 1.1 + Math.random();
+        }
+        if (b.y > H + 24) { b.st = 'enter'; b.y = -30; }
+      }
+    });
+
+    S.ebul.forEach(function (e) { e.x += e.vx * dt; e.y += e.vy * dt; });
+    S.ebul = S.ebul.filter(function (e) { return e.y < H + 10; });
+
+    // 子彈打蜜蜂
+    S.shots.forEach(function (s) {
+      S.bees.forEach(function (b) {
+        if (s.dead || b.dead || !near(s, b, 14)) { return; }
+        s.dead = true;
+        if (--b.hp > 0) { boom(b.x, b.y, '#60a5fa', 6); return; }
+        b.dead = true;
+        var pts = b.boss ? 150 : 50;
+        if (b.st === 'dive') { pts *= b.boss ? 2.6 : 2; }
+        S.score += Math.round(pts);
+        boom(b.x, b.y, b.boss ? '#34d399' : '#facc15', 16);
+      });
+    });
+    S.shots = S.shots.filter(function (s) { return !s.dead; });
+    S.bees = S.bees.filter(function (b) { return !b.dead; });
+
+    // 玩家中彈 / 被撞
+    if (p.inv <= 0) {
+      var hit = S.ebul.some(function (e) { return near(e, p, 11); }) ||
+                S.bees.some(function (b) { return near(b, p, 22); });
+      if (hit) {
+        boom(p.x, p.y, RED, 30);
+        S.lives--;
+        if (S.lives <= 0) {
+          S.over = true;
+          if (S.score > hi) {
+            hi = S.score;
+            try { localStorage.setItem('bm_bee_hi', hi); } catch (e) {}
+          }
+        } else { resetPlayer(); }
+      }
+    }
+
+    if (!S.bees.length) { nextWave(); }
+  }
+
+  function tick(dt) {
+    stars.forEach(function (s) {
+      s.y += s.v * dt;
+      if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
+    });
+    S.parts.forEach(function (q) {
+      q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt;
+    });
+    S.parts = S.parts.filter(function (q) { return q.life > 0; });
+  }
+
+  function drawBee(b) {
+    g.save();
+    g.translate(b.x, b.y);
+    if (b.st === 'dive') { g.rotate(Math.max(-.6, Math.min(.6, -b.vx / 300))); }
+    var f = Math.sin(S.t * 22 + b.c * 1.3) * .5 + .5;
+    g.fillStyle = 'rgba(219,234,254,.8)';           // 翅膀
+    g.beginPath();
+    g.ellipse(-9, -5, 7, 3 + f * 3, -.5, 0, 6.283);
+    g.ellipse(9, -5, 7, 3 + f * 3, .5, 0, 6.283);
+    g.fill();
+    g.save();                                        // 身體 + 條紋
+    g.beginPath();
+    g.ellipse(0, 3, 8, 11, 0, 0, 6.283);
+    g.fillStyle = b.boss ? (b.hp > 1 ? '#34d399' : '#60a5fa') : '#facc15';
+    g.fill();
+    g.clip();
+    g.fillStyle = '#111827';
+    g.fillRect(-9, 1, 18, 3);
+    g.fillRect(-9, 7, 18, 3);
+    g.restore();
+    g.fillStyle = '#111827';                         // 頭
+    g.beginPath(); g.arc(0, -8, 5, 0, 6.283); g.fill();
+    g.strokeStyle = '#111827'; g.lineWidth = 1.2;    // 觸角
+    g.beginPath();
+    g.moveTo(-2, -12); g.lineTo(-5, -17);
+    g.moveTo(2, -12); g.lineTo(5, -17);
+    g.stroke();
+    g.restore();
+  }
+
+  function drawShip(x, y, sc) {
+    g.save(); g.translate(x, y); g.scale(sc, sc);
+    g.fillStyle = '#e2e8f0';
+    g.beginPath();
+    g.moveTo(0, -15); g.lineTo(5, -4); g.lineTo(14, 8); g.lineTo(5, 6);
+    g.lineTo(0, 10); g.lineTo(-5, 6); g.lineTo(-14, 8); g.lineTo(-5, -4);
+    g.closePath(); g.fill();
+    g.fillStyle = RED;
+    g.fillRect(-2, -8, 4, 9);
+    g.fillRect(-13, 4, 4, 4); g.fillRect(9, 4, 4, 4);
+    g.restore();
+  }
+
+  function txt(s, x, y, font, c, align) {
+    g.font = font; g.fillStyle = c; g.textAlign = align || 'left';
+    g.fillText(s, x, y);
+  }
+
+  function draw() {
+    g.fillStyle = '#0b1220'; g.fillRect(0, 0, W, H);
+    stars.forEach(function (s) {
+      g.fillStyle = 'rgba(226,232,240,' + s.a + ')';
+      g.fillRect(s.x, s.y, 1.5, 1.5);
+    });
+    S.bees.forEach(drawBee);
+    g.fillStyle = '#fde047';
+    S.shots.forEach(function (s) { g.fillRect(s.x - 1.5, s.y - 7, 3, 12); });
+    g.fillStyle = '#f87171';
+    S.ebul.forEach(function (e) { g.beginPath(); g.arc(e.x, e.y, 3, 0, 6.283); g.fill(); });
+    S.parts.forEach(function (q) {
+      g.globalAlpha = Math.max(0, q.life * 1.6);
+      g.fillStyle = q.c; g.fillRect(q.x - 1.5, q.y - 1.5, 3, 3);
+    });
+    g.globalAlpha = 1;
+    if (!S.over && (S.p.inv <= 0 || Math.floor(S.t * 10) % 2)) {
+      drawShip(S.p.x, S.p.y, 1);
+    }
+
+    var M = '600 12px Consolas, monospace', B = '700 16px Consolas, monospace';
+    txt('SCORE', 12, 18, M, 'rgba(226,232,240,.6)');
+    txt(String(S.score), 12, 36, B, '#e2e8f0');
+    txt('HI', W / 2, 18, M, 'rgba(226,232,240,.6)', 'center');
+    txt(String(Math.max(hi, S.score)), W / 2, 36, B, '#e2e8f0', 'center');
+    txt('WAVE ' + S.wave, W - 12, 18, M, 'rgba(226,232,240,.6)', 'right');
+    for (var i = 0; i < S.lives - 1; i++) { drawShip(W - 22 - i * 22, 34, .55); }
+    txt('← → 移動   Space 射擊   P 暫停   R 重來   Esc 關閉',
+        W / 2, H - 8, '11px Consolas, monospace', 'rgba(226,232,240,.45)', 'center');
+
+    if (S.banner > 0 && !S.over) {
+      txt('WAVE ' + S.wave, W / 2, H / 2, '700 24px Consolas, monospace', '#facc15', 'center');
+    }
+    if (S.over) {
+      g.fillStyle = 'rgba(0,0,0,.7)'; g.fillRect(0, H / 2 - 44, W, 80);
+      txt('GAME OVER', W / 2, H / 2 - 8, '700 26px Consolas, monospace', '#f87171', 'center');
+      txt('按 R 重新開始', W / 2, H / 2 + 20, '13px Consolas, monospace', '#e2e8f0', 'center');
+    } else if (S.paused) {
+      g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(0, H / 2 - 26, W, 44);
+      txt('PAUSED', W / 2, H / 2 + 4, '700 20px Consolas, monospace', '#facc15', 'center');
+    }
+    g.textAlign = 'left';
+  }
+
+  function frame(ts) {
+    raf = requestAnimationFrame(frame);
+    var dt = last ? Math.min(.033, (ts - last) / 1000) : 0;
+    last = ts;
+    if (!S.over && !S.paused) { update(dt); }
+    tick(S.paused ? 0 : dt);
+    draw();
+  }
+
+  // ⚠️ capture 階段掛在 window：canvas 沒有焦點也收得到；
+  //    方向鍵與空白鍵要吃掉，否則整個頁面會跟著捲動、按鈕會被觸發。
+  var EAT = {ArrowLeft: 1, ArrowRight: 1, ArrowUp: 1, ArrowDown: 1, ' ': 1};
+  function down(e) {
+    var k = e.key;
+    if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); if (onExit) { onExit(); } return; }
+    if (k === 'p' || k === 'P') { S.paused = !S.paused; }
+    else if (k === 'r' || k === 'R') { newGame(); }
+    if (EAT[k] || k === 'p' || k === 'P' || k === 'r' || k === 'R') {
+      keys[k] = true; e.preventDefault(); e.stopPropagation();
+    }
+  }
+  function up(e) { keys[e.key] = false; if (EAT[e.key]) { e.preventDefault(); } }
+  window.addEventListener('keydown', down, true);
+  window.addEventListener('keyup', up, true);
+
+  newGame();
+  raf = requestAnimationFrame(frame);
+
+  return function stop() {
+    cancelAnimationFrame(raf);
+    window.removeEventListener('keydown', down, true);
+    window.removeEventListener('keyup', up, true);
+  };
+};
+"""
+
+
+# ════════════════════════════════════════════════════════════════════════════════
 # 15. CLI
 # ════════════════════════════════════════════════════════════════════════════════
 

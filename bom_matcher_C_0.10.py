@@ -303,8 +303,12 @@ def _rows_to_df(rows):
         'P/N': r['pn'],
         'Description': r['desc'],
         'Qty': str(r['qty']) if r['qty'] not in (None, '') else '',
-        'Location-Top': r.get('ref_top') if _double(rows) else r['ref'],
-        'Location-Bot': r.get('ref_bot', '') if _double(rows) else '',
+        # v0.10：畫面也顯示 (T)/(B)，與輸出 Excel 一致。改過的值寫回 ref_top /
+        # ref_bot 時會帶著前綴，寫 Excel 時 tag_side() 冪等，不會疊成 (T)(T)。
+        'Location-Top': (core.tag_side(r.get('ref_top'), 'T') if _double(rows)
+                         else r['ref']),
+        'Location-Bot': (core.tag_side(r.get('ref_bot', ''), 'B') if _double(rows)
+                         else ''),
         'Location 未知': r.get('ref_unk', ''),
         'Knowledge Note': r['kn'],
     } for r in rows])
