@@ -370,14 +370,89 @@ def do_match():
 PAGES = ['檔案設定', '比對結果', 'Knowledge 命中', '表頭資訊', '產出 E-BOM']
 ICONS = ['folder', 'table', 'lightbulb', 'card-heading', 'download']
 
+# ── v0.10：品牌區 ADATA LOGO ＋ 彩蛋（比照 Firmware Tool）────────────────────
+#  按住 Shift 連點三次 LOGO → 小蜜蜂遊戲。沒有開關、預設沒有任何提示。
+#  用 CCv2 元件：LOGO 的 pointerdown 要在瀏覽器端處理（連點計數不必回 Python），
+#  遊戲視窗掛在 document.body，不受側邊欄的版面與 Shadow DOM 樣式限制。
+#  ⚠️ 監聽 pointerdown 不是 click、圖片要 draggable=false —— <img> 的原生拖曳
+#     會把 click 吃掉（Firmware Tool 踩過的坑，見 bom_core 14b 節）。
+_BRAND = st.components.v2.component(
+    'bm_brand',
+    html="""
+<div class="br">
+  <img class="lg" draggable="false" alt="ADATA">
+  <div class="bg">B</div>
+  <div><b>BOM Matcher</b><div class="sub"></div></div>
+</div>
+""",
+    css="""
+.br{display:flex;gap:9px;align-items:center;margin-bottom:2px;
+    font-family:"Source Sans Pro",sans-serif;color:#31333F}
+.br b{font-size:15px}
+.sub{font-size:11px;color:#808495;white-space:nowrap}
+.lg{width:44px;height:32px;object-fit:contain;background:#fff;border:1px solid #E6E8EE;
+    border-radius:7px;padding:2px;box-sizing:border-box;
+    -webkit-user-drag:none;user-select:none}
+.bg{width:32px;height:32px;border-radius:8px;background:#4F46E5;color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700}
+""",
+    js=core.BEE_GAME_JS + """
+function eggClose() {
+  const E = window.__bmEgg;
+  if (!E) { return; }
+  if (E.stop) { E.stop(); E.stop = null; }   // 收掉動畫與鍵盤監聽，否則方向鍵會繼續被吃
+  E.el.style.display = 'none';
+}
+
+function eggOpen() {
+  let E = window.__bmEgg;
+  if (!E) {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);'
+      + 'display:none;align-items:center;justify-content:center;z-index:1000000';
+    el.innerHTML = '<div style="background:#0b1220;padding:10px;border-radius:14px;'
+      + 'box-shadow:0 20px 50px rgba(0,0,0,.4)">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;'
+      + 'margin:0 2px 6px;font:600 11px Consolas,monospace;letter-spacing:2px;'
+      + 'color:rgba(226,232,240,.55)"><span>BEE</span>'
+      + '<button type="button" title="關閉" style="background:none;border:none;'
+      + 'color:rgba(226,232,240,.75);font-size:15px;cursor:pointer;padding:0 4px">✕</button></div>'
+      + '<canvas width="420" height="520" style="display:block;border-radius:8px"></canvas></div>';
+    el.addEventListener('pointerdown', (e) => { if (e.target === el) { eggClose(); } });
+    el.querySelector('button').addEventListener('click', eggClose);
+    document.body.appendChild(el);
+    E = window.__bmEgg = {el: el, stop: null};
+  }
+  E.el.style.display = 'flex';
+  if (E.stop) { E.stop(); }
+  E.stop = window.bmBeeGame(E.el.querySelector('canvas'), eggClose);
+}
+
+export default function (component) {
+  const { data, parentElement } = component;
+  const img = parentElement.querySelector('.lg');
+  const badge = parentElement.querySelector('.bg');
+  parentElement.querySelector('.sub').textContent = data.sub;
+  if (!data.logo) { img.style.display = 'none'; return; }
+  badge.style.display = 'none';
+  if (img.getAttribute('src') !== data.logo) { img.setAttribute('src', data.logo); }
+  if (img.__bmEgg) { return; }               // 每次 rerun 都會呼叫，監聽只掛一次
+  img.__bmEgg = {n: 0, t: 0};
+  img.addEventListener('pointerdown', (e) => {
+    const c = img.__bmEgg;
+    if (!e.shiftKey) { c.n = 0; return; }
+    e.preventDefault();                      // Shift+點擊會選取文字
+    const now = Date.now();
+    if (now - c.t > data.ms) { c.n = 0; }
+    c.t = now;
+    if (++c.n >= data.n) { c.n = 0; eggOpen(); }
+  });
+}
+""")
+
 with st.sidebar:
-    st.markdown(
-        f"<div style='display:flex;gap:9px;align-items:center;margin-bottom:2px'>"
-        f"<div style='width:32px;height:32px;border-radius:8px;background:#4F46E5;"
-        f"color:#fff;display:flex;align-items:center;justify-content:center;"
-        f"font-weight:700'>B</div><div><b style='font-size:15px'>BOM Matcher</b>"
-        f"<div style='font-size:11px;color:#808495'>{LAUNCHER} · v{core.VERSION}"
-        f"</div></div></div>", unsafe_allow_html=True)
+    _BRAND(data={'logo': core.app_logo_uri(), 'sub': f'{LAUNCHER} · v{core.VERSION}',
+                 'n': core.EGG_CLICKS, 'ms': core.EGG_WINDOW_MS}, key='brand')
     st.write('')
 
     if _HAS_MENU:

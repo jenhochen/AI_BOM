@@ -50,7 +50,7 @@ input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
 .brand .m{width:30px;height:30px;border-radius:8px;background:#4F46E5;color:#fff;
           font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px}
 .brand b{font-size:13.5px;display:block}
-.brand span{font-size:11px;color:#8b90a0}
+.brand span{font-size:11px;color:#8b90a0;white-space:nowrap}
 .grp{font-size:10px;letter-spacing:.1em;color:#9aa0ae;font-weight:600;padding:14px 8px 6px}
 .nav{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;
      font-size:13px;color:#3c4252;margin-bottom:2px;border:none;background:none;width:100%;

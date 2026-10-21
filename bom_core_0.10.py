@@ -1660,7 +1660,7 @@ window.bmBeeGame = function (cv, onExit) {
 
   function nextWave() {
     S.wave++; S.bees = []; S.t = 0; S.banner = 1.8;
-    S.diveCd = 2.2;
+    S.diveCd = 3.2;                       // 開局先讓玩家看清楚隊形
     for (var r = 0; r < 4; r++) {
       for (var c = 0; c < 8; c++) {
         if (r === 0 && (c === 0 || c === 7)) { continue; }   // 頭目只有 6 隻

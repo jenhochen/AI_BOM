@@ -54,6 +54,7 @@ PROGRAM_FILES = [
     f"changelog_BOM_matcher_v{VER}.txt",
     "HANDOVER_bom_matcher.md",
     "pcb.jpg",
+    "adata.png",          # 品牌 LOGO（C/D 兩案的左上角）
 ]
 SOP = [f"BOM_Matcher_v{VER}_操作SOP.pptx",
        f"BOM_Matcher_v{VER}_操作SOP.html"]
