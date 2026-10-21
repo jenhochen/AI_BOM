@@ -56,8 +56,8 @@ PROGRAM_FILES = [
     "pcb.jpg",
     "adata.png",          # 品牌 LOGO（C/D 兩案的左上角）
 ]
-SOP = [f"BOM_Matcher_v{VER}_操作SOP.pptx",
-       f"BOM_Matcher_v{VER}_操作SOP.html"]
+# 2026-10-21 起 HTML 版停止維護，交付包只給 PPTX。
+SOP = [f"BOM_Matcher_v{VER}_操作SOP.pptx"]
 SAMPLE = {
     "TXT": ["SM8008_M2_D4X2_4G178_C261C_V1C_20261012.BOM.txt",
             "S-M2P42280SMH086-20260812_1.BOM"],

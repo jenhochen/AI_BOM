@@ -8,7 +8,10 @@ const pptxgen = require('pptxgenjs');
 const { VER, DATE, THEME, SLIDES } = require('./content.js');
 const L = require('./layout.js');
 
-const OUT = path.resolve(__dirname, '..', `BOM_Matcher_v${VER}_操作SOP.pptx`);
+// SOP_OUT 可以改輸出路徑 —— 正式檔被 OnlyOffice/PowerPoint 開著時，
+// 還是能先建到別的檔名驗證版面。
+const OUT = process.env.SOP_OUT
+  || path.resolve(__dirname, '..', `BOM_Matcher_v${VER}_操作SOP.pptx`);
 
 const pres = new pptxgen();
 pres.layout = 'LAYOUT_16x9';            // 10" x 5.625"
@@ -253,6 +256,11 @@ for (const s of DECK) {
   }
 
   if (s.kind === 'shot') {
+    // 編號標記必須和右側說明一一對應，少一個就會出現「有號碼卻找不到圓點」。
+    if (s.marks && s.marks.length !== s.bullets.length) {
+      throw new Error(`[${s.title}] marks ${s.marks.length} 個，`
+        + `bullets ${s.bullets.length} 條，數量必須相同`);
+    }
     const iw = 5.95, ih = iw / s.ar;
     sl.addImage({ path: path.resolve(__dirname, s.img), x: L.M, y: 1.05,
       w: iw, h: ih, rounding: false, objectName: 'shot' });

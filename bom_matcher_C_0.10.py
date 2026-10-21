@@ -450,6 +450,11 @@ export default function (component) {
 }
 """)
 
+# v0.10：按「▶ 執行比對」之後自動跳到「比對結果」（與 D 案一致）。
+# 按鈕在頁面主體、比側邊欄晚執行，所以不能當場切頁 —— 先存 goto_page，
+# 下一次 rerun 在建立選單之前才套用。
+_goto = st.session_state.pop('goto_page', None)
+
 with st.sidebar:
     _BRAND(data={'logo': core.app_logo_uri(), 'sub': f'{LAUNCHER} · v{core.VERSION}',
                  'n': core.EGG_CLICKS, 'ms': core.EGG_WINDOW_MS}, key='brand')
@@ -457,7 +462,8 @@ with st.sidebar:
 
     if _HAS_MENU:
         page = option_menu(
-            None, PAGES, icons=ICONS, default_index=1,
+            None, PAGES, icons=ICONS, default_index=1, key='nav',
+            manual_select=(PAGES.index(_goto) if _goto in PAGES else None),
             styles={
                 'container': {'padding': '0', 'background-color': '#F0F2F6'},
                 'nav-link': {'font-size': '14px', 'padding': '9px 12px',
@@ -465,7 +471,10 @@ with st.sidebar:
                 'nav-link-selected': {'background-color': '#4F46E5'},
             })
     else:
-        page = st.radio('WORKFLOW', PAGES, index=1, label_visibility='collapsed')
+        if _goto in PAGES:
+            st.session_state['nav_radio'] = _goto
+        page = st.radio('WORKFLOW', PAGES, index=1, key='nav_radio',
+                        label_visibility='collapsed')
 
     st.divider()
     d = st.session_state.disc
@@ -541,7 +550,9 @@ if page == '檔案設定':
 
     st.write('')
     if st.button('▶ 執行比對', type='primary'):
-        do_match(); st.rerun()
+        do_match()
+        st.session_state.goto_page = '比對結果'
+        st.rerun()
 
     if st.session_state.log:
         st.code('\n'.join(st.session_state.log), language=None)

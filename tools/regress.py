@@ -16,7 +16,7 @@ def load(f, n):
     return m
 
 
-v8 = load("bom_core_0.09.py", "v9")
+v8 = load("old/bom_core_0.09.py", "v9")   # 舊版已搬到 old 目錄
 v9 = load("bom_core_0.10.py", "v10")
 
 CASES = [

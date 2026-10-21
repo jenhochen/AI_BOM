@@ -525,11 +525,39 @@ SOP 第 14 頁「右上角的選單（三個點）」照這兩項寫。
 1. 重新截圖：介面有變的頁面重拍，放進 `docs\sop\shots\`
 2. 改文字：只動 `docs\sop\content.js`（`VER` / `DATE` 也要改）
 3. 重建：`node docs/sop/build.js` → 產出 `docs\BOM_Matcher_vX.XX_操作SOP.pptx`
-4. 驗證：`python docs/sop/validate.py` 必須 All validations PASSED
-5. HTML：`python docs/sop/preview.py` → QA 必須 `deadLinks:0`、`imgFail:0`、`issues:[]`
-6. 兩種格式都要進交付包（PPTX ＋ HTML），目錄超連結都要能跳
+4. 驗證：pptx validator 必須 All validations PASSED
+5. 交付包只放 **PPTX**，目錄超連結要能跳
+
+### ★ HTML 版 SOP 已停止維護（2026-10-21 起）
+
+`docs\sop\preview.py` 留在版控裡當參考，但**不再執行、不再進交付包**。
+現有的 `BOM_Matcher_v0.10_操作SOP.html` 已經搬到 `old\`。
+
+原因：同一份內容維護兩種格式，等於每次都要驗兩次版面。
+而且 HTML 版是用 python-pptx 反解 pptx 再重畫的，pptx 的細節
+（形狀填色、透明度、段落對齊…）要一項一項補 —— 已經為此修過三次 bug
+（挑錯版本的 deck、沒讀透明度導致截圖全白、沒讀段落對齊導致置中失效）。
+PPTX 本身就能看、能投影、能列印，不值得為第二種格式付這個成本。
 
 SOP 的截圖以 **D 案（pywebview）** 為主，C 案只放差異頁。
+所有截圖頁都要有編號標記（方案 A），`build.js` 會在建置時檢查
+「標記數 == 說明條目數」，不相等直接中斷。
+
+---
+
+### ★ 程式目錄只留最新版（2026-10-21 起）
+
+根目錄與 `docs\` 只保留**目前版本**的檔案，其餘全部搬到 `old\`：
+
+```
+根目錄   bom_core_0.10.py  bom_matcher_C_0.10.py  bom_matcher_D_0.10.py
+         changelog_BOM_matcher_v0.10.txt  HANDOVER_bom_matcher.md
+         requirements.txt  五個 .bat  pcb.jpg  adata.png
+docs\    BOM_Matcher_v0.10_操作SOP.pptx
+```
+
+搬動後記得檢查有沒有程式還指著舊路徑 ——
+`toolsegress.py` 會載入前一版的 core 做回歸，路徑要跟著改成 `old/`。
 
 ---
 
