@@ -154,6 +154,11 @@ tr:hover td{filter:brightness(.985)}
    原本寫死 max-height:190px，視窗拉大之後下面一大片都是空的。 */
 .page > .console{flex:1;min-height:120px}
 /* 比對結果頁下方的日誌：可收合，展開時固定高度，不跟表格搶空間 */
+.cellsel{border:1px solid #E2E5EA;border-radius:6px;background:#fff;color:#4F46E5;
+         font-size:10.5px;font-weight:600;padding:1px 2px;width:100%;cursor:pointer}
+.kncell{font-size:10.5px;color:#e8863a;line-height:1.45}
+.kncell .loc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+             overflow:hidden;cursor:help}
 .loc{position:relative}
 .loctip{display:none;position:fixed;z-index:999;width:340px;max-height:240px;overflow:auto;
         background:#171B24;color:#dfe4ee;font-family:Consolas,monospace;font-size:11px;
@@ -253,16 +258,16 @@ tr:hover td{filter:brightness(.985)}
       <div class="cards" id="stats"></div>
       <div class="split">
         <div class="left"><div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
-          <div class="card-hd"><b>BOM 明細</b><span class="sub">點列可在右側檢視 · 欄位可直接編輯</span>
+          <div class="card-hd"><b>BOM 明細</b><span class="sub">欄位可直接編輯 · 滑過 Description / Location 看完整內容</span>
             <div class="rt" id="filters"></div></div>
           <div class="tb"><table id="tbl"><thead><tr>
-            <th style="width:44px">Item</th><th style="width:58px">RC/EC</th>
+            <th style="width:44px">Item</th><th style="width:66px">RC/EC</th>
             <th style="width:150px">P/N</th><th>Description</th>
-            <th style="width:52px">Qty</th><th style="width:150px" id="thTop">Location-Top</th>
-            <th style="width:150px;display:none" id="thBot">Location-Bot</th>
+            <th style="width:52px">Qty</th><th style="width:170px" id="thTop">Location-Top</th>
+            <th style="width:170px;display:none" id="thBot">Location-Bot</th>
+            <th style="width:180px">Knowledge</th>
           </tr></thead><tbody id="tbody"></tbody></table></div>
         </div></div>
-        <div class="right" id="detail"></div>
       </div>
       <!-- v0.10：日誌從右側明細欄搬到下方、整列寬（與 S 案一致）。
            放在右欄只有 300px 寬，[請人工確認] 的明細每行都被折成三行。 -->
@@ -328,7 +333,7 @@ function page(p){
   document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('on', b.dataset.p===p));
   document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on', e.id==='p-'+p));
   const T={files:['檔案設定','預設值全部來自程式所在目錄及其 TXT\\ · ExcelDB\\ · screenshot\\ · output\\ 子資料夾'],
-           rows:['比對結果','點任一列可在右側檢視與修正；底色與輸出 Excel 一致'],
+           rows:['比對結果','欄位可直接編輯；底色與輸出 Excel 一致'],
            kn:['Knowledge 命中','逐筆確認；忽略後該列不標橘底，Note 也不寫入 Excel'],
            hdr:['表頭資訊','填入 Excel rows 3–8 的欄位，留空則維持空白'],
            out:['產出 E-BOM','']};
@@ -428,15 +433,17 @@ function renderRows(){
     const dot=r.chk?'<span class="dot f-chk"></span>'
              :r.kn?'<span class="dot f-kn"></span>':r.nc?'<span class="dot f-nc"></span>'
              :r.group?'<span class="dot f-alt"></span>':'';
-    return `<tr class="${cls}" onclick="S.sel=${i};renderRows();renderDetail()">
+    return `<tr class="${cls}">
       <td class="c">${r.item==null?'':r.item}</td>
-      <td class="c"><span class="pill ${r.rcec==='RC'?'rc':'ec'}">${r.rcec}</span></td>
+      <td class="c"><select class="cellsel" onchange="upd(${i},'rcec',this.value)">
+        <option ${r.rcec==='RC'?'selected':''}>RC</option>
+        <option ${r.rcec==='EC'?'selected':''}>EC</option></select></td>
       <td>${r.pn ? `<input class="cellin mono" value="${esc(r.pn)}"
              onchange="upd(${i},'pn',this.value)">`
           : `<input class="cellin miss" placeholder="— 無命中 —"
              onchange="upd(${i},'pn',this.value)">`}</td>
-      <td><div class="dcell">${dot}<input class="cellin" value="${esc(r.desc)}"
-             onchange="upd(${i},'desc',this.value)"></div></td>
+      <td><div class="dcell loc" data-tip="${esc(descTip(r))}">${dot}<input class="cellin"
+             value="${esc(r.desc)}" onchange="upd(${i},'desc',this.value)"></div></td>
       <td class="c">${r.qty==null?'':`<input class="cellin" style="text-align:center"
              value="${esc(r.qty)}" onchange="upd(${i},'qty',this.value)">`}</td>
       ${S.double
@@ -444,16 +451,28 @@ function renderRows(){
            <td>${locCell(i,'ref_bot',r.ref_bot)}
            ${r.ref_unk ? `<div class="unkmsg">⚠ ${esc(r.ref_unk)} 查不到 Top/Bot</div>` : ''}</td>`
         : `<td>${locCell(i,'ref',r.ref)}</td>`}
+      <td class="kncell">${r.kn ? `<div class="loc" data-tip="${esc(r.kn)}">${esc(r.kn)}</div>` : ''}</td>
     </tr>`;}).join('');
   document.getElementById('thBot').style.display = S.double ? '' : 'none';
   document.getElementById('outpath2').textContent = short(S.cfg.out||'');
-  renderDetail();
 }
 /* Location 欄只有 150px，點位多的時候看不到全部（例：Item 4 有 13 個）。
    滑鼠移上去就用氣泡顯示完整清單；氣泡會換行，不會拉成一長條。 */
+/* 面板拿掉之後，Footprint 與比對狀態改放在 Description 的氣泡裡 —— 
+   這兩項是整張表唯一看不到的資訊。 */
+function descTip(r){
+  return 'Footprint：' + (r.fp || '—')
+       + '　/　原始 Part：' + (r.part || '—')
+       + '　/　' + (r.pn ? '已命中' : '未命中')
+       + (r.chk ? '（R8 降壓選料，請人工確認）' : '')
+       + '\n' + (r.desc || '');
+}
+
 function locCell(i, field, val){
   const v = val || '';
-  return `<div class="loc" data-loc="${esc(v)}">`
+  const tip = v ? v.split(',').length + ' 個 Location\n'
+                + v.replace(/,/g, ', ') : '';
+  return `<div class="loc" data-tip="${esc(tip)}">`
        + `<input class="cellin mono" value="${esc(v)}" `
        + `onchange="upd(${i},'${field}',this.value)"></div>`;
 }
@@ -462,15 +481,17 @@ function locCell(i, field, val){
    絕對定位的子元素會被裁掉（實測三行只看得到兩行）。 */
 let LOCTIP = null;
 function locTipShow(el){
-  const v = el.dataset.loc || '';
+  const v = el.dataset.tip || '';
   if (!v) return;
   if (!LOCTIP){
     LOCTIP = document.createElement('div');
     LOCTIP.className = 'loctip';
     document.body.appendChild(LOCTIP);
   }
-  const n = v.split(',').length;
-  LOCTIP.innerHTML = `<b>${n} 個 Location</b>${esc(v).replace(/,/g, ', ')}`;
+  const i = v.indexOf('\n');
+  LOCTIP.innerHTML = i > 0
+    ? `<b>${esc(v.slice(0, i))}</b>${esc(v.slice(i + 1))}`
+    : esc(v);
   LOCTIP.style.display = 'block';
   const r = el.getBoundingClientRect();
   const h = LOCTIP.offsetHeight;
@@ -484,30 +505,6 @@ document.addEventListener('mouseover', e => {
   const el = e.target.closest ? e.target.closest('.loc') : null;
   if (el) locTipShow(el); else locTipHide();
 });
-
-function renderDetail(){
-  const r=S.rows[S.sel]; const d=document.getElementById('detail');
-  if(!r){d.innerHTML='';return;}
-  let h=`<div class="card"><div class="card-hd"><b>Item ${r.item==null?'↳ 替代料':r.item}</b>
-    <span class="sub">${esc(r.part||'')}</span></div><div class="kv">
-    <div class="r"><span class="k">Footprint</span><span class="v">${esc(r.fp||'—')}</span></div>
-    <div class="r"><span class="k">RC/EC</span><span class="v">
-      <select onchange="upd(${S.sel},'rcec',this.value)">
-        <option ${r.rcec==='RC'?'selected':''}>RC</option>
-        <option ${r.rcec==='EC'?'selected':''}>EC</option></select></span></div>
-    <div class="r"><span class="k">P/N</span><span class="v">
-      <input value="${esc(r.pn)}" onchange="upd(${S.sel},'pn',this.value)"></span></div>
-    <div class="r"><span class="k">Qty</span><span class="v">${r.qty==null
-        ? '<span style="color:#9aa0ae">（併入主列）</span>' : esc(r.qty)}</span></div>
-    <div class="r"><span class="k">比對狀態</span><span class="v" style="color:${r.pn?'#0f9d58':'#c74343'}">
-        ${r.pn?'已命中':'未命中'}</span></div></div></div>`;
-  if(r.kn){ h+=`<div class="card"><div class="card-hd"><b>Knowledge 命中</b></div>
-    <div class="note"><div class="src">來源：${esc(short(S.cfg.kn||''))}</div>
-    <div class="body">${esc(r.kn)}</div>
-    <div class="act"><button class="btn g" onclick="alert('已採用，將寫入 Excel')">✓ 採用</button>
-      <button class="btn" onclick="upd(${S.sel},'kn','')">✕ 忽略此筆</button></div></div></div>`; }
-  d.innerHTML=h;
-}
 /* 這些前綴在日誌裡是縮排過的，要先去掉開頭空白再判斷 ——
    原本只寫 l.startsWith('[')，所以 [請人工確認] / [警告] / [提示]
    通通判不到，全部印成白字。規則與 core.log_class() 同一套。 */
@@ -817,10 +814,16 @@ def _selftest():
             'document.querySelectorAll("#tbody tr").length')))
         out.append('banner    = ' + repr(WIN.evaluate_js(
             'document.getElementById("banner").innerText')))
-        WIN.evaluate_js('page("rows"); S.sel=1; renderRows()')
+        WIN.evaluate_js('page("rows"); renderRows()')
         time.sleep(1)
-        out.append('detail    = ' + repr(WIN.evaluate_js(
-            'document.getElementById("detail").innerText.slice(0,60)')))
+        # v0.10 甲案：右側明細面板已拿掉，改驗表格本身
+        out.append('rcec sel  = ' + str(WIN.evaluate_js(
+            'document.querySelectorAll("#tbody .cellsel").length')))
+        out.append('footprint = ' + repr(WIN.evaluate_js(
+            'document.querySelectorAll("#tbody .dcell")[0]'
+            '.dataset.tip.split(String.fromCharCode(10))[0]')))
+        out.append('kn cells  = ' + str(WIN.evaluate_js(
+            'document.querySelectorAll("#tbody .kncell .loc").length')))
         WIN.evaluate_js('upd(0,"qty","9")')
         time.sleep(1)
         out.append('after edit= ' + str(WIN.evaluate_js('JSON.stringify(S.stats)')))
