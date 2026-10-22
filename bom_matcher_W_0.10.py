@@ -396,8 +396,7 @@ function renderStats(){
   + box('Total Qty',s.qty,'主列加總');
 }
 
-const FILTERS=[['all','全部'],['miss','未命中'],['nc','NC'],['alt','替代料'],
-               ['kn','Knowledge'],['chk','需確認'],['unk','Location 未知']];
+const FILTERS = __FILTERS__;   /* 由 core.FILTERS 注入，S 案用同一份 */
 function keep(r){
   if(S.q){ const q=S.q.toLowerCase();
     if(!((r.pn||'')+' '+(r.desc||'')+' '+(r.ref||'')).toLowerCase().includes(q)) return false; }
@@ -850,7 +849,9 @@ def page_html():
                 .replace('__VER__', core.VERSION)
                 .replace('__EGG_MS__', str(core.EGG_WINDOW_MS))
                 .replace('__EGG_N__', str(core.EGG_CLICKS))
-                .replace('/*__BEE_GAME__*/', core.BEE_GAME_JS))
+                .replace('/*__BEE_GAME__*/', core.BEE_GAME_JS)
+                .replace('__FILTERS__', json.dumps(
+                    [[k, l] for k, l in core.FILTERS], ensure_ascii=False)))
 
 
 def main():

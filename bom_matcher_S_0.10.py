@@ -92,6 +92,10 @@ st.markdown("""
   .console .ok{color:#4ec97b}
   .console .wn{color:#e8b931}
   .console .er{color:#ff7b72}
+  .bdgrow{display:flex;gap:6px;margin:6px 0 2px;flex-wrap:wrap}
+  .bdgrow span{background:#fff;border:1px solid #E2E5EA;border-radius:7px;
+               padding:2px 8px;font-size:10.5px;color:#6b7180}
+  .bdgrow b{color:#4F46E5;font-size:11.5px;margin-left:2px}
 </style>
 """, unsafe_allow_html=True)
 
@@ -317,6 +321,7 @@ def _double(rows):
 
 
 def _rows_to_df(rows):
+    # index = 原始列號，篩選之後 _df_to_rows() 才對得回去
     df = pd.DataFrame([{
         '狀態': ('⚠️' if r.get('ref_unk') else '🔴' if r.get('chk')
                  else '🟠' if r['kn']
@@ -343,11 +348,17 @@ def _rows_to_df(rows):
 
 
 def _df_to_rows(df, rows):
-    """把編輯後的表格寫回 rows（依位置對應，不改變列數）。"""
-    out = []
-    for i, r in enumerate(rows):
-        rec = df.iloc[i]
-        n = dict(r)
+    """
+    把編輯後的表格寫回 rows。
+
+    ⚠️ 依 **df 的 index** 對應，不是位置 —— 加了篩選之後畫面上可能只有
+    10 列，用 enumerate 會把第 1 列寫到 rows[0]，整份資料錯位。
+    _rows_to_df() 會把原始列號放進 index。
+    """
+    out = [dict(r) for r in rows]
+    for i in df.index:
+        rec = df.loc[i]
+        n = dict(rows[i])
         n['rcec'] = str(rec['RC/EC'] or '').strip()
         n['pn']   = str(rec['P/N'] or '').strip()
         n['desc'] = str(rec['Description'] or '')
@@ -359,7 +370,7 @@ def _df_to_rows(df, rows):
         n['kn']   = str(rec['Knowledge Note'] or '')
         q = str(rec['Qty'] or '').strip()
         n['qty'] = int(float(q)) if q.replace('.', '', 1).isdigit() else None
-        out.append(n)
+        out[i] = n
     return out
 
 
@@ -487,7 +498,7 @@ with st.sidebar:
 
     if _HAS_MENU:
         page = option_menu(
-            None, PAGES, icons=ICONS, default_index=1, key='nav',
+            None, PAGES, icons=ICONS, default_index=0, key='nav',
             manual_select=(PAGES.index(_goto) if _goto in PAGES else None),
             styles={
                 'container': {'padding': '0', 'background-color': '#F0F2F6'},
@@ -498,8 +509,17 @@ with st.sidebar:
     else:
         if _goto in PAGES:
             st.session_state['nav_radio'] = _goto
-        page = st.radio('WORKFLOW', PAGES, index=1, key='nav_radio',
+        page = st.radio('WORKFLOW', PAGES, index=0, key='nav_radio',
                         label_visibility='collapsed')
+
+    # 側邊欄徽章（W 案的 nav 右側有數字，option_menu 不支援，改放下面一列）
+    if st.session_state.rows is not None:
+        _s = core.stats(st.session_state.rows)
+        st.markdown(
+            f"<div class='bdgrow'><span>比對結果 <b>{_s['rows']}</b></span>"
+            f"<span>Knowledge <b>{_s['kn']}</b></span>"
+            f"<span>未命中 <b>{_s['miss']}</b></span></div>",
+            unsafe_allow_html=True)
 
     st.divider()
     d = st.session_state.disc
@@ -588,9 +608,17 @@ if page == '檔案設定':
 # ════════════════════════════════════════════════════════════════════════════
 
 elif page == '比對結果':
-    st.title('比對結果')
-    st.caption('可直接在表格內修正 P/N、RC/EC、Description、Qty；'
-               '修改會帶入產出的 Excel。')
+    t1, t2 = st.columns([5, 1])
+    with t1:
+        st.title('比對結果')
+        st.caption('可直接在表格內修正 P/N、RC/EC、Description、Qty；'
+                   '修改會帶入產出的 Excel。')
+    with t2:
+        st.write('')
+        if st.button('↺ 重新比對', use_container_width=True,
+                     disabled=st.session_state.rows is None,
+                     help='用目前的檔案設定重跑一次，手動修改會被蓋掉'):
+            do_match(); st.rerun()
 
     if st.session_state.rows is None:
         st.info('尚未執行比對。')
@@ -609,11 +637,30 @@ elif page == '比對結果':
         m[5].metric('Total Qty', s['qty'], '主列加總')
 
         st.write('')
-        st.toggle('⤢ 放大表格', key='big_table',
-                  help='151 列在預設高度一次只看得到十幾列，'
-                       '放大後一次看三倍。')
-        tab_e, tab_v = st.tabs(['✎ 編輯', '🎨 色底檢視（唯讀）'])
+        # 篩選鈕＋搜尋框（條件與 W 案共用 core.keep_row / core.FILTERS）
+        cnt = core.filter_counts(rows)
+        f1, f2, f3 = st.columns([6, 3, 1.4])
+        with f1:
+            lbl = {f'{t}　{cnt[k]}': k for k, t in core.FILTERS}
+            pick = st.radio('篩選', list(lbl), horizontal=True,
+                            key='flt', label_visibility='collapsed')
+            flt = lbl[pick]
+        with f2:
+            q = st.text_input('搜尋', key='q', placeholder='搜尋 P/N、Description、Location',
+                              label_visibility='collapsed')
+        with f3:
+            st.toggle('⤢ 放大', key='big_table',
+                      help='151 列在預設高度一次只看得到十幾列，放大後一次看三倍。')
+
         df = _rows_to_df(rows)
+        keep = [i for i, r in enumerate(rows) if core.keep_row(r, flt, q)]
+        df = df.loc[keep]
+        if len(keep) != len(rows):
+            st.caption(f'篩選後 {len(keep)} / {len(rows)} 列'
+                       '　（只會顯示符合條件的列，編輯一樣會寫回原本的位置）')
+        if not keep:
+            st.info('沒有符合條件的列。')
+        tab_e, tab_v = st.tabs(['✎ 編輯', '🎨 色底檢視（唯讀）'])
 
         with tab_e:
             ed = st.data_editor(

@@ -425,6 +425,39 @@ LOG_RED  = ('[請人工確認]', '[警告]', '[提示]', '[錯誤]')
 LOG_WARN = ('[提醒]',)
 
 
+# ── 比對結果的篩選（S / W 兩案共用同一套條件）────────────────────────────
+# W 案原本只在 JS 裡寫了一份，S 案根本沒有篩選。抽到這裡讓兩邊一致。
+FILTERS = [('all', '全部'), ('miss', '未命中'), ('nc', 'NC'), ('alt', '替代料'),
+           ('kn', 'Knowledge'), ('chk', '需確認'), ('unk', 'Location 未知')]
+
+
+def keep_row(r: dict, flt: str = 'all', q: str = '') -> bool:
+    """一列要不要顯示。flt 見 FILTERS，q 是搜尋字（比對 P/N、Description、Location）。"""
+    if q:
+        hay = ' '.join(str(r.get(k) or '') for k in
+                       ('pn', 'desc', 'ref', 'ref_top', 'ref_bot')).lower()
+        if q.lower() not in hay:
+            return False
+    if flt == 'miss':
+        return not r.get('pn')
+    if flt == 'nc':
+        return bool(r.get('nc'))
+    if flt == 'alt':
+        return bool(r.get('group'))
+    if flt == 'kn':
+        return bool(r.get('kn'))
+    if flt == 'chk':
+        return bool(r.get('chk'))
+    if flt == 'unk':
+        return bool(r.get('ref_unk'))
+    return True
+
+
+def filter_counts(rows: list) -> dict:
+    """每個篩選條件各有幾列，給按鈕上的數字用。"""
+    return {k: sum(1 for r in rows if keep_row(r, k)) for k, _ in FILTERS}
+
+
 def log_class(line) -> str:
     """回傳 'ok' / 'er' / 'wn' / ''，給 HTML 的 <span class> 用。"""
     t = (line or '').lstrip()
