@@ -562,11 +562,31 @@ egress.py` 會載入前一版的 core 做回歸，路徑要跟著改成 `old/`�
 
 ---
 
+### ★ 給方案選擇時一定要附預覽圖（2026-10-21 起）
+
+只要是「要你選 a / b / c」或「甲案 / 乙案」這種，**不可以只用文字描述**，
+一定要先做出預覽圖讓 Stanley 看到長什麼樣子再決定。
+
+適用範圍：介面版面、SOP 版面、輸出檔格式、互動方式 —— 只要看得見的都算。
+
+做法（不需要動到正式程式）：
+1. 用 HTML 模擬各方案的畫面，放在暫存目錄
+2. `python -m http.server <port>` 起一個本機伺服器
+3. headless Chrome 截圖：
+   `chrome.exe --headless=new --window-size=W,H --screenshot=out.png http://127.0.0.1:<port>/x.html`
+4. 存到 `screenshot\`，檔名帶版號與用途
+
+W 案的真實截圖用 `tools\shots_S.py` 的 CDP 作法；
+S 案（Streamlit）一定要用 CDP，因為畫面要互動才出得來。
+
+---
+
 ### ★ 檔案被佔用時要停下來問（2026-10-21 起）
 
 重建 SOP 或交付包時如果遇到 `EBUSY` / `Permission denied`
 （多半是 OnlyOffice / PowerPoint / Excel 開著），**不要自己想辦法繞過，
-也不要刪掉 `.~lock` 檔**：停下來問 Stanley 可不可以覆蓋。
+也不要刪掉 `.~lock` 檔**：停下來問 Stanley。
+**流程是：他關檔 → 我存檔。** 不要自己覆蓋。
 
 理由：那是他正在看的檔案，直接覆蓋等於把他眼前的內容換掉；
 刪 lock 檔更糟 —— 他一存檔就把剛建好的覆蓋回去。
