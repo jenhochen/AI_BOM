@@ -153,6 +153,23 @@ tr:hover td{filter:brightness(.985)}
 /* 檔案設定／產出頁的日誌：吃掉版面剩下的高度，視窗放大就跟著變大。
    原本寫死 max-height:190px，視窗拉大之後下面一大片都是空的。 */
 .page > .console{flex:1;min-height:120px}
+/* 比對結果頁下方的日誌：可收合，展開時固定高度，不跟表格搶空間 */
+.loc{position:relative}
+.loctip{display:none;position:fixed;z-index:999;width:340px;max-height:240px;overflow:auto;
+        background:#171B24;color:#dfe4ee;font-family:Consolas,monospace;font-size:11px;
+        line-height:1.6;border-radius:9px;padding:8px 11px;
+        box-shadow:0 8px 26px rgba(0,0,0,.38);white-space:normal;word-break:break-all;
+        pointer-events:none}
+.loctip b{display:block;color:#8ea0ff;font-size:10.5px;margin-bottom:4px;
+          font-family:"Microsoft JhengHei",sans-serif}
+
+.logbox{flex:none;border:1px solid #E8EAED;border-radius:12px;background:#fff;overflow:hidden}
+.logbox > summary{cursor:pointer;list-style:none;padding:7px 13px;font-size:12px;
+                  font-weight:600;color:#3c4252;user-select:none}
+.logbox > summary::-webkit-details-marker{display:none}
+.logbox > summary::before{content:'▸ ';color:#9aa0ae}
+.logbox[open] > summary::before{content:'▾ '}
+.logbox .console{border-radius:0 0 12px 12px;max-height:26vh;min-height:0}
 /* 比對結果右側欄位裡的日誌仍要有上限，否則會把明細擠出去 */
 .right .console{max-height:38vh;flex:none}
 .console .ok{color:#4ec97b}.console .wn{color:#e8b931}.console .er{color:#ff7b72}
@@ -247,6 +264,13 @@ tr:hover td{filter:brightness(.985)}
         </div></div>
         <div class="right" id="detail"></div>
       </div>
+      <!-- v0.10：日誌從右側明細欄搬到下方、整列寬（與 S 案一致）。
+           放在右欄只有 300px 寬，[請人工確認] 的明細每行都被折成三行。 -->
+      <div style="height:10px;flex:none"></div>
+      <details class="logbox" id="logwrap" open>
+        <summary>執行日誌</summary>
+        <div class="console" id="log3">（尚未執行）</div>
+      </details>
       <div class="foot">
         <div class="legend">
           <span><span class="dot f-nc"></span>原本為 NC</span>
@@ -416,15 +440,51 @@ function renderRows(){
       <td class="c">${r.qty==null?'':`<input class="cellin" style="text-align:center"
              value="${esc(r.qty)}" onchange="upd(${i},'qty',this.value)">`}</td>
       ${S.double
-        ? `<td><input class="cellin mono" value="${esc(r.ref_top)}" onchange="upd(${i},'ref_top',this.value)"></td>
-           <td><input class="cellin mono" value="${esc(r.ref_bot)}" onchange="upd(${i},'ref_bot',this.value)">
+        ? `<td>${locCell(i,'ref_top',r.ref_top)}</td>
+           <td>${locCell(i,'ref_bot',r.ref_bot)}
            ${r.ref_unk ? `<div class="unkmsg">⚠ ${esc(r.ref_unk)} 查不到 Top/Bot</div>` : ''}</td>`
-        : `<td><input class="cellin mono" value="${esc(r.ref)}" onchange="upd(${i},'ref',this.value)"></td>`}
+        : `<td>${locCell(i,'ref',r.ref)}</td>`}
     </tr>`;}).join('');
   document.getElementById('thBot').style.display = S.double ? '' : 'none';
   document.getElementById('outpath2').textContent = short(S.cfg.out||'');
   renderDetail();
 }
+/* Location 欄只有 150px，點位多的時候看不到全部（例：Item 4 有 13 個）。
+   滑鼠移上去就用氣泡顯示完整清單；氣泡會換行，不會拉成一長條。 */
+function locCell(i, field, val){
+  const v = val || '';
+  return `<div class="loc" data-loc="${esc(v)}">`
+       + `<input class="cellin mono" value="${esc(v)}" `
+       + `onchange="upd(${i},'${field}',this.value)"></div>`;
+}
+
+/* 氣泡掛在 <body> 上、position:fixed —— 表格是 overflow:auto，
+   絕對定位的子元素會被裁掉（實測三行只看得到兩行）。 */
+let LOCTIP = null;
+function locTipShow(el){
+  const v = el.dataset.loc || '';
+  if (!v) return;
+  if (!LOCTIP){
+    LOCTIP = document.createElement('div');
+    LOCTIP.className = 'loctip';
+    document.body.appendChild(LOCTIP);
+  }
+  const n = v.split(',').length;
+  LOCTIP.innerHTML = `<b>${n} 個 Location</b>${esc(v).replace(/,/g, ', ')}`;
+  LOCTIP.style.display = 'block';
+  const r = el.getBoundingClientRect();
+  const h = LOCTIP.offsetHeight;
+  const below = r.bottom + 6 + h < window.innerHeight;
+  LOCTIP.style.top = (below ? r.bottom + 6 : r.top - h - 6) + 'px';
+  LOCTIP.style.left = Math.max(8,
+      Math.min(r.right - LOCTIP.offsetWidth, window.innerWidth - 348)) + 'px';
+}
+function locTipHide(){ if (LOCTIP) LOCTIP.style.display = 'none'; }
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest ? e.target.closest('.loc') : null;
+  if (el) locTipShow(el); else locTipHide();
+});
+
 function renderDetail(){
   const r=S.rows[S.sel]; const d=document.getElementById('detail');
   if(!r){d.innerHTML='';return;}
@@ -446,7 +506,6 @@ function renderDetail(){
     <div class="body">${esc(r.kn)}</div>
     <div class="act"><button class="btn g" onclick="alert('已採用，將寫入 Excel')">✓ 採用</button>
       <button class="btn" onclick="upd(${S.sel},'kn','')">✕ 忽略此筆</button></div></div></div>`; }
-  h+=`<div class="console">${S.log.map(fmt).join('\n')}</div>`;
   d.innerHTML=h;
 }
 /* 這些前綴在日誌裡是縮排過的，要先去掉開頭空白再判斷 ——
@@ -498,7 +557,11 @@ function badges(){
   document.getElementById('ver').textContent = (S.launcher||'') + ' · v' + (S.ver||'');
 }
 function paintLog(){
-  document.getElementById('log1').innerHTML = S.log.map(fmt).join('\n')||'（尚未執行）';
+  const t = S.log.map(fmt).join('\n') || '（尚未執行）';
+  ['log1', 'log2', 'log3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = t;
+  });
 }
 function renderAll(){ renderFiles(); renderStats(); renderRows(); badges(); paintLog(); }
 
