@@ -6,8 +6,8 @@ BOM Matcher 核心模組（無 GUI）
 Text BOM (Altium) + Excel Parts DB  →  ADATA E-BOM formatted Excel
 
 本檔可獨立當 CLI 使用，也供下列前端 import：
-    bom_matcher_C_0.09.py   Streamlit 網頁版
-    bom_matcher_D_0.09.py   pywebview 原生視窗版
+    bom_matcher_S_0.10.py   Streamlit 網頁版
+    bom_matcher_W_0.10.py   pywebview 原生視窗版
 
 Usage (CLI)
 -----------
@@ -418,6 +418,24 @@ def tag_side(refs, side: str) -> str:
 #   耐壓不足會縮短壽命但電路仍會動，看得到、可人工判斷；
 #   誤差/電流不符是功能性錯誤，放寬等於讓程式替工程師做決定。
 _RE_TAGGED = re.compile(r'^\([TB]\)', re.IGNORECASE)
+
+# 日誌著色（S / W 兩案共用）。注意這些前綴在日誌裡是「縮排過的」，
+# 比對時要先 lstrip —— 之前只判斷 startswith('[') 所以通通沒中。
+LOG_RED  = ('[請人工確認]', '[警告]', '[提示]', '[錯誤]')
+LOG_WARN = ('[提醒]',)
+
+
+def log_class(line) -> str:
+    """回傳 'ok' / 'er' / 'wn' / ''，給 HTML 的 <span class> 用。"""
+    t = (line or '').lstrip()
+    if t.startswith('✓'):
+        return 'ok'
+    if t.startswith('✗') or t.startswith(LOG_RED):
+        return 'er'
+    if t.startswith(LOG_WARN) or t.startswith('['):
+        return 'wn'
+    return ''
+
 
 R8_MARK = '請再確認'
 
@@ -1306,7 +1324,7 @@ def _newest(paths: list) -> list:
     v0.09 修正：v0.07 的 discover() 取 txts[-1] 當預設值，而候選清單的順序
     是「先 glob *.txt 再 glob *.BOM」—— .BOM 檔永遠排在最後、永遠被選中，
     跟檔名和日期都無關。實際事故：2026-10-14 的 SM8008 選不到，反而選到
-    2026-09-01 的舊範例檔，導致 C 案產出的是錯的 BOM。
+    2026-09-01 的舊範例檔，導致 S 案產出的是錯的 BOM。
     改為一律依 mtime 排序，最新的排第一個，由 discover() 取 [0]。
     """
     def mtime(p):

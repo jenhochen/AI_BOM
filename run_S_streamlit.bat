@@ -12,22 +12,22 @@ if not exist "%STCRED%\credentials.toml" (
   echo [general]>"%STCRED%\credentials.toml"
   echo email = "">>"%STCRED%\credentials.toml"
 )
-title BOM Matcher v0.10 - C / Streamlit
+title BOM Matcher v0.10 - S / Streamlit
 echo.
-echo   BOM Matcher v0.10  -  C  (Streamlit web UI)
+echo   BOM Matcher v0.10  -  S  (Streamlit web UI)
 echo   Folder: %~dp0
 echo   URL   : http://localhost:8601
 echo.
 echo   Keep this window open while using the app.
 echo   Close it to stop the server.
 echo.
-"%PY%" -m streamlit run "%~dp0bom_matcher_C_0.10.py" --server.port 8601 --server.headless false
+"%PY%" -m streamlit run "%~dp0bom_matcher_S_0.10.py" --server.port 8601 --server.headless false
 if errorlevel 1 (
   echo.
   echo   [ERROR] Failed to start.
   echo          - Run install_requirements.bat first, or
   echo          - Port 8601 may be in use; try:
-  echo            python -m streamlit run "%~dp0bom_matcher_C_0.10.py" --server.port 8602
+  echo            python -m streamlit run "%~dp0bom_matcher_S_0.10.py" --server.port 8602
 )
 echo.
 pause

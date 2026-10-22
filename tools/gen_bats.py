@@ -58,42 +58,42 @@ BATS["run_CLI.bat"] = HEAD + (
     "pause\r\n"
 )
 
-BATS["run_C_streamlit.bat"] = HEAD + SKIP_STREAMLIT_WELCOME + (
-    "title BOM Matcher v0.10 - C / Streamlit\r\n"
+BATS["run_S_streamlit.bat"] = HEAD + SKIP_STREAMLIT_WELCOME + (
+    "title BOM Matcher v0.10 - S / Streamlit\r\n"
     "echo.\r\n"
-    "echo   BOM Matcher v0.10  -  C  (Streamlit web UI)\r\n"
+    "echo   BOM Matcher v0.10  -  S  (Streamlit web UI)\r\n"
     "echo   Folder: %~dp0\r\n"
     "echo   URL   : http://localhost:8601\r\n"
     "echo.\r\n"
     "echo   Keep this window open while using the app.\r\n"
     "echo   Close it to stop the server.\r\n"
     "echo.\r\n"
-    "\"%PY%\" -m streamlit run \"%~dp0bom_matcher_C_0.10.py\""
+    "\"%PY%\" -m streamlit run \"%~dp0bom_matcher_S_0.10.py\""
     " --server.port 8601 --server.headless false\r\n"
     "if errorlevel 1 (\r\n"
     "  echo.\r\n"
     "  echo   [ERROR] Failed to start.\r\n"
     "  echo          - Run install_requirements.bat first, or\r\n"
     "  echo          - Port 8601 may be in use; try:\r\n"
-    "  echo            python -m streamlit run \"%~dp0bom_matcher_C_0.10.py\""
+    "  echo            python -m streamlit run \"%~dp0bom_matcher_S_0.10.py\""
     " --server.port 8602\r\n"
     ")\r\n"
     "echo.\r\n"
     "pause\r\n"
 )
 
-BATS["run_D_webview.bat"] = HEAD + (
-    "title BOM Matcher v0.10 - D / pywebview\r\n"
-    "start \"\" \"%PYW%\" \"%~dp0bom_matcher_D_0.10.py\"\r\n"
+BATS["run_W_webview.bat"] = HEAD + (
+    "title BOM Matcher v0.10 - W / pywebview\r\n"
+    "start \"\" \"%PYW%\" \"%~dp0bom_matcher_W_0.10.py\"\r\n"
 )
 
-BATS["run_D_webview_debug.bat"] = HEAD + (
-    "title BOM Matcher v0.10 - D / pywebview (debug)\r\n"
+BATS["run_W_webview_debug.bat"] = HEAD + (
+    "title BOM Matcher v0.10 - W / pywebview (debug)\r\n"
     "set PYWEBVIEW_LOG=debug\r\n"
     "echo.\r\n"
     "echo   BOM Matcher v0.10  -  D  (debug mode, console kept open)\r\n"
     "echo.\r\n"
-    "\"%PY%\" \"%~dp0bom_matcher_D_0.10.py\"\r\n"
+    "\"%PY%\" \"%~dp0bom_matcher_W_0.10.py\"\r\n"
     "echo.\r\n"
     "echo   Window closed. If there is an error above, please screenshot it.\r\n"
     "pause\r\n"
@@ -143,8 +143,8 @@ BATS["install_requirements.bat"] = HEAD + (
     "echo.\r\n"
     "echo   Next:\r\n"
     "echo     run_CLI.bat           check the core first\r\n"
-    "echo     run_C_streamlit.bat   plan C  (browser)\r\n"
-    "echo     run_D_webview.bat     plan D  (native window)\r\n"
+    "echo     run_S_streamlit.bat   plan S  (Streamlit, browser)\r\n"
+    "echo     run_W_webview.bat     plan W  (WebView, native window)\r\n"
     "echo.\r\n"
     "pause\r\n"
 )

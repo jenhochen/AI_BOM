@@ -45,7 +45,7 @@ echo ================================================
 echo.
 echo   Next:
 echo     run_CLI.bat           check the core first
-echo     run_C_streamlit.bat   plan C  (browser)
-echo     run_D_webview.bat     plan D  (native window)
+echo     run_S_streamlit.bat   plan S  (Streamlit, browser)
+echo     run_W_webview.bat     plan W  (WebView, native window)
 echo.
 pause

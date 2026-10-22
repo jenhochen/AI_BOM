@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-bom_matcher_C_0.10.py  v0.10  —  C 案：Streamlit 網頁版
+bom_matcher_S_0.10.py  v0.10  —  S 案：Streamlit 網頁版
 
 啟動：
-    run_C_streamlit.bat            （雙擊）
-    streamlit run bom_matcher_C_0.10.py
+    run_S_streamlit.bat            （雙擊）
+    streamlit run bom_matcher_S_0.10.py
 
 工作目錄固定為「程式所在目錄」，不受啟動時的 cwd 影響。
 """
 
+import html
 import io
 import os
 import sys
@@ -37,9 +38,9 @@ if not _under_streamlit():
     print()
     print('=' * 62)
     print('  這個檔案不能直接執行（雙擊或 python 執行都不行）。')
-    print('  C 案是 Streamlit 網頁版，必須用 streamlit 啟動：')
+    print('  S 案是 Streamlit 網頁版，必須用 streamlit 啟動：')
     print()
-    print(f'      雙擊  {_here / "run_C_streamlit.bat"}')
+    print(f'      雙擊  {_here / "run_S_streamlit.bat"}')
     print()
     print('  或在命令列輸入：')
     print(f'      python -m streamlit run "{Path(__file__).resolve()}"')
@@ -68,7 +69,7 @@ except ImportError:
 
 
 # v0.10：標題列帶上啟動用的批次檔名稱，同時開 C/D 兩個介面時才分得出來
-LAUNCHER = 'run_C_streamlit.bat'
+LAUNCHER = 'run_S_streamlit.bat'
 APP_TITLE = f'BOM Matcher v{core.VERSION}  [{LAUNCHER}]'
 
 st.set_page_config(page_title=APP_TITLE,
@@ -84,6 +85,13 @@ st.markdown("""
            padding:8px 11px;color:#6b4413;font-size:.86rem;line-height:1.55}
   .pathbox{background:#F0F2F6;border-radius:7px;padding:7px 11px;
            font-family:Consolas,monospace;font-size:.78rem;color:#43474f}
+  /* 執行日誌：和 W 案同一組配色（黑底、✓ 綠、[警告] 類紅） */
+  .console{background:#171B24;border-radius:12px;padding:10px 13px;
+           font-family:Consolas,monospace;font-size:.76rem;line-height:1.62;
+           color:#c8cede;white-space:pre-wrap;overflow:auto;max-height:46vh}
+  .console .ok{color:#4ec97b}
+  .console .wn{color:#e8b931}
+  .console .er{color:#ff7b72}
 </style>
 """, unsafe_allow_html=True)
 
@@ -113,6 +121,23 @@ def _init():
 _init()
 
 
+def _tbl_h() -> int:
+    """表格高度。預設 560px 一次只看得到 14 列，資料有 151 列，
+    所以給一個「放大」切換（和 W 案的放大一致）。"""
+    return 1100 if st.session_state.get('big_table') else 560
+
+
+def _console(lines):
+    """把日誌畫成和 W 案一樣的黑底主控台。著色規則用 core.log_class()。"""
+    out = []
+    for ln in lines:
+        c = core.log_class(ln)
+        t = html.escape(str(ln))
+        out.append(f'<span class="{c}">{t}</span>' if c else t)
+    st.markdown("<div class='console'>" + "\n".join(out)
+                + "</div>", unsafe_allow_html=True)
+
+
 def log(msg):
     st.session_state.log.append(str(msg))
 
@@ -126,10 +151,10 @@ def _label(p: str) -> str:
         return p
 
 
-# ── v0.10 新增：檔案瀏覽（補上 D 案本來就有、C 案缺的功能）────────────────
+# ── v0.10 新增：檔案瀏覽（補上 W 案本來就有、S 案缺的功能）────────────────
 #
 # 為什麼要做兩套：
-#   1. 原生對話框  與 D 案一致，操作最直覺。但 Streamlit 的指令碼跑在背景
+#   1. 原生對話框  與 W 案一致，操作最直覺。但 Streamlit 的指令碼跑在背景
 #      執行緒，tkinter 對話框偶爾會開在瀏覽器視窗後面，或在某些環境失效。
 #   2. 目錄瀏覽器  純 Streamlit 元件，不依賴 tkinter，一定能用。
 #
@@ -450,7 +475,7 @@ export default function (component) {
 }
 """)
 
-# v0.10：按「▶ 執行比對」之後自動跳到「比對結果」（與 D 案一致）。
+# v0.10：按「▶ 執行比對」之後自動跳到「比對結果」（與 W 案一致）。
 # 按鈕在頁面主體、比側邊欄晚執行，所以不能當場切頁 —— 先存 goto_page，
 # 下一次 rerun 在建立選單之前才套用。
 _goto = st.session_state.pop('goto_page', None)
@@ -555,7 +580,7 @@ if page == '檔案設定':
         st.rerun()
 
     if st.session_state.log:
-        st.code('\n'.join(st.session_state.log), language=None)
+        _console(st.session_state.log)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -584,12 +609,15 @@ elif page == '比對結果':
         m[5].metric('Total Qty', s['qty'], '主列加總')
 
         st.write('')
+        st.toggle('⤢ 放大表格', key='big_table',
+                  help='151 列在預設高度一次只看得到十幾列，'
+                       '放大後一次看三倍。')
         tab_e, tab_v = st.tabs(['✎ 編輯', '🎨 色底檢視（唯讀）'])
         df = _rows_to_df(rows)
 
         with tab_e:
             ed = st.data_editor(
-                df, use_container_width=True, height=560, hide_index=True,
+                df, use_container_width=True, height=_tbl_h(), hide_index=True,
                 disabled=['狀態', 'Item'],
                 column_config={
                     '狀態': st.column_config.TextColumn(width='small'),
@@ -616,9 +644,18 @@ elif page == '比對結果':
 
         with tab_v:
             st.dataframe(_style(df), use_container_width=True,
-                         height=560, hide_index=True)
+                         height=_tbl_h(), hide_index=True)
             st.caption('Streamlit 的 st.data_editor 不套用 Styler 底色，'
                        '因此「可編輯」與「色底」分成兩個頁籤。')
+
+        # W 案在這一頁的右側就看得到日誌，S 案原本只有檔案設定頁有，
+        # 切過來之後那些 [請人工確認] / [警告] 就從眼前消失了。
+        st.write('')
+        with st.expander('執行日誌', expanded=False):
+            if st.session_state.log:
+                _console(st.session_state.log)
+            else:
+                st.caption('（尚未執行比對）')
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -688,7 +725,7 @@ elif page == '產出 E-BOM':
                    f"Total Qty = {s['qty']}　|　PCB 圖片："
                    f"{_label(st.session_state.pcb)}")
         st.write('')
-        # 同名檔要先確認再覆蓋（D 案用 confirm 對話框，這裡用勾選框）
+        # 同名檔要先確認再覆蓋（W 案用 confirm 對話框，這裡用勾選框）
         exists = Path(core.force_xlsx(st.session_state.out)).is_file()
         ok = True
         if exists:
@@ -715,4 +752,4 @@ elif page == '產出 E-BOM':
                                    mime='application/vnd.openxmlformats-'
                                         'officedocument.spreadsheetml.sheet')
         if st.session_state.log:
-            st.code('\n'.join(st.session_state.log), language=None)
+            _console(st.session_state.log)

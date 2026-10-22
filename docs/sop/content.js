@@ -46,7 +46,7 @@ const SLIDES = [
     ],
     out: 'ADATA E-BOM 格式 Excel',
     outNote: '表頭、PCB 圖、BOM 明細、Total、表尾一次做好',
-    note: '三種介面（CLI / C 案 / D 案）共用同一份核心邏輯，\n' +
+    note: '三種介面（CLI / S 案 / W 案）共用同一份核心邏輯，\n' +
           '同一份輸入產出的 Excel 完全相同。' },
 
   { kind: 'cards', section: '認識工具', title: '三種介面怎麼選',
@@ -56,12 +56,12 @@ const SLIDES = [
             '最快、最穩',
             '不能人工修正，直接出檔',
             '第一次安裝完建議先跑這支確認環境'] },
-      { t: 'run_C_streamlit.bat', s: 'C 案．瀏覽器',
+      { t: 'run_S_streamlit.bat', s: 'S 案．瀏覽器',
         b: ['在瀏覽器操作，localhost:8601',
             '可編輯表格後再產出',
             '色底需切到「色底檢視」頁籤',
             '使用期間不能關掉黑色主控台'] },
-      { t: 'run_D_webview.bat', s: 'D 案．原生視窗',
+      { t: 'run_W_webview.bat', s: 'W 案．原生視窗',
         b: ['雙擊即開，不需要瀏覽器',
             '三欄式，右側即時顯示明細',
             '色底與編輯可以並存',
@@ -93,13 +93,13 @@ const SLIDES = [
       { n: '3', t: '看到「請重開視窗」就再跑一次',
         d: 'Python 剛裝好時 PATH 還沒生效，關掉視窗再執行一次\n「安裝.bat」把套件裝完。' },
       { n: '4', t: '確認三行都是 [OK]',
-        d: '[OK] 核心 / [OK] C 案 / [OK] D 案。\n出現 [--] 表示該介面不能用，其餘仍可運作。' },
+        d: '[OK] 核心 / [OK] S 案 / [OK] W 案。\n出現 [--] 表示該介面不能用，其餘仍可運作。' },
     ] },
 
-  // ── 三、C 案 ────────────────────────────────────────────────────────
-  { kind: 'divider', section: 'C 案操作', n: '03', title: 'C 案　瀏覽器介面' },
+  // ── 三、S 案 ────────────────────────────────────────────────────────
+  { kind: 'divider', section: 'S 案操作', n: '03', title: 'S 案　瀏覽器介面' },
 
-  { kind: 'shot', section: 'C 案操作', title: '步驟 1　檔案設定',
+  { kind: 'shot', section: 'S 案操作', title: '步驟 1　檔案設定',
     img: SHOTS + 'C_01_files.jpg', ar: 1440 / 942, shotw: 1440,
     marks: [[1, 577, 226], [2, 470, 533], [3, 570, 813],
             [4, 826, 213], [5, 784, 905]],
@@ -112,7 +112,7 @@ const SLIDES = [
     ],
     warn: '確認 Text BOM 是你這次要跑的那一支。\n選錯檔案是最常見的失誤。' },
 
-  { kind: 'shot', section: 'C 案操作', title: '檔案不在預設清單裡',
+  { kind: 'shot', section: 'S 案操作', title: '檔案不在預設清單裡',
     img: SHOTS + 'C_02_browser.jpg', ar: 1440 / 942, shotw: 1440,
     marks: [[1, 466, 281], [2, 737, 477], [3, 468, 345], [4, 577, 226]],
     bullets: [
@@ -123,7 +123,7 @@ const SLIDES = [
     ],
     warn: '「瀏覽…」開的是 Windows 原生對話框，偶爾會躲在瀏覽器視窗後面。\n找不到就改用目錄瀏覽器，功能一樣。' },
 
-  { kind: 'shot', section: 'C 案操作', title: '步驟 2　比對結果',
+  { kind: 'shot', section: 'S 案操作', title: '步驟 2　比對結果',
     img: SHOTS + 'C_03_rows.jpg', ar: 1440 / 942, shotw: 1440,
     marks: [[1, 570, 222], [2, 1005, 487], [3, 420, 937], [4, 399, 417]],
     bullets: [
@@ -132,9 +132,9 @@ const SLIDES = [
       '改完按「儲存修改」才會帶進產出的 Excel',
       '狀態欄：🔴 R8 降壓選料　⚠️ Location 未知　🟠🟡🟢 對應 Excel 色底',
     ],
-    warn: 'C 案的「✎ 編輯」頁籤不顯示色底 —— 這是 Streamlit 的限制。\n要看色底請切到「🎨 色底檢視」頁籤（唯讀）。' },
+    warn: 'S 案的「✎ 編輯」頁籤不顯示色底 —— 這是 Streamlit 的限制。\n要看色底請切到「🎨 色底檢視」頁籤（唯讀）。' },
 
-  { kind: 'shot', section: 'C 案操作', title: '步驟 3　產出 E-BOM',
+  { kind: 'shot', section: 'S 案操作', title: '步驟 3　產出 E-BOM',
     img: SHOTS + 'C_04_export.jpg', ar: 1440 / 942, shotw: 1440,
     marks: [[1, 430, 312], [2, 428, 360], [3, 700, 618], [4, 423, 488]],
     bullets: [
@@ -145,7 +145,7 @@ const SLIDES = [
     ],
     warn: '最後一行的「113 項（含PCB）→ 151 列」要對得上預期。\n列數比項數多，是因為替代料被拆成獨立列。' },
 
-  { kind: 'shot', section: 'C 案操作', title: '右上角的選單（三個點）',
+  { kind: 'shot', section: 'S 案操作', title: '右上角的選單（三個點）',
     img: SHOTS + 'C_05_menu.jpg', ar: 1440 / 942, shotw: 1440,
     marks: [[1, 1258, 70], [2, 1395, 104], [3, 1407, 30], [4, 150, 654]],
     bullets: [
@@ -156,37 +156,37 @@ const SLIDES = [
     ],
     warn: '瀏覽器重新整理（F5）會清掉這次的比對結果與手動修改，\n要重新執行比對。' },
 
-  { kind: 'table', section: 'C 案操作', title: 'C 案其他頁面與 D 案對照',
-    head: ['頁面', 'C 案', 'D 案'],
+  { kind: 'table', section: 'S 案操作', title: 'S 案其他頁面與 W 案對照',
+    head: ['頁面', 'S 案', 'W 案'],
     colW: [1.6, 3.7, 3.7], rowH: 0.4,
     rows: [
-      ['Knowledge 命中', '每筆一張卡片，「✕ 忽略此筆」', '同左（D 案步驟 3）'],
-      ['表頭資訊', '九個欄位，留空就是空白', '同左（D 案步驟 4）'],
+      ['Knowledge 命中', '每筆一張卡片，「✕ 忽略此筆」', '同左（W 案步驟 3）'],
+      ['表頭資訊', '九個欄位，留空就是空白', '同左（W 案步驟 4）'],
       ['色底', '「🎨 色底檢視」頁籤（唯讀）', '表格直接上色，可邊看邊改'],
       ['覆蓋確認', '勾「確認覆蓋」才能產出', '跳出確認對話框'],
       ['開啟時的頁面', '比對結果（先按「▶ 執行比對」）', '檔案設定'],
     ],
     note: '兩案共用同一份核心，同一份輸入產出的 Excel 完全相同。\n' +
-          'Knowledge 與表頭的操作見 D 案步驟 3、4。' },
+          'Knowledge 與表頭的操作見 W 案步驟 3、4。' },
 
-  // ── 四、D 案 ────────────────────────────────────────────────────────
-  { kind: 'divider', section: 'D 案操作', n: '04', title: 'D 案　原生視窗' },
+  // ── 四、W 案 ────────────────────────────────────────────────────────
+  { kind: 'divider', section: 'W 案操作', n: '04', title: 'W 案　原生視窗' },
 
-  { kind: 'shot', section: 'D 案操作', title: '步驟 1　檔案設定',
+  { kind: 'shot', section: 'W 案操作', title: '步驟 1　檔案設定',
     img: SHOTS + 'D_01_files.png', ar: 1280 / 820,
     marks: [[1, 1200, 145], [2, 787, 382], [3, 787, 446],
             [4, 428, 543], [5, 700, 700], [6, 467, 577]],
     bullets: [
-      '欄位與 C 案相同；輸入檔按「瀏覽…」，輸出路徑按「變更…」',
+      '欄位與 S 案相同；輸入檔按「瀏覽…」，輸出路徑按「變更…」',
       '**Location TOP/BOT 對照表**：選填，給了就切換成雙面板模式',
       '**PCB 圖片（BOT 面）**：雙面板時提供兩張，圖片區自動切成上下兩半',
       '「替代料拆列」打勾時一列只有一個 P/N；取消勾選會回到 a;b 單列格式',
       '下方黑色區塊是執行日誌',
       '按「▶ 執行比對」開始',
     ],
-    warn: '標題列會標出啟動用的 .bat：\nBOM Matcher v0.10　[run_D_webview.bat]' },
+    warn: '標題列會標出啟動用的 .bat：\nBOM Matcher v0.10　[run_W_webview.bat]' },
 
-  { kind: 'shot', section: 'D 案操作', title: '步驟 2　比對結果與人工修正',
+  { kind: 'shot', section: 'W 案操作', title: '步驟 2　比對結果與人工修正',
     img: SHOTS + 'D_02_rows.png', ar: 1280 / 820,
     marks: [[1, 300, 329], [2, 390, 457], [3, 300, 259], [4, 300, 791]],
     bullets: [
@@ -197,7 +197,7 @@ const SLIDES = [
     ],
     warn: '改了 Qty，右上角的 Total Qty 會立刻跟著變，\n可以用來確認改對了。' },
 
-  { kind: 'shot', section: 'D 案操作', title: '步驟 3　Knowledge 命中確認',
+  { kind: 'shot', section: 'W 案操作', title: '步驟 3　Knowledge 命中確認',
     img: SHOTS + 'D_03_knowledge.png', ar: 1280 / 820,
     marks: [[1, 290, 138], [2, 460, 193], [3, 1193, 137], [4, 500, 441]],
     bullets: [
@@ -208,7 +208,7 @@ const SLIDES = [
     ],
     warn: '包裝比對是子字串，可能誤命中。\n例如品名「TVS」會命中講 SOD-523 的條目，要人工判斷。' },
 
-  { kind: 'shot', section: 'D 案操作', title: '步驟 4　表頭資訊',
+  { kind: 'shot', section: 'W 案操作', title: '步驟 4　表頭資訊',
     img: SHOTS + 'D_04_header.png', ar: 1280 / 820,
     marks: [[1, 380, 144], [2, 380, 230], [3, 380, 402], [4, 820, 488]],
     bullets: [
@@ -218,7 +218,7 @@ const SLIDES = [
       '留空就是空白，不影響其他功能',
     ] },
 
-  { kind: 'shot', section: 'D 案操作', title: '步驟 5　產出 E-BOM',
+  { kind: 'shot', section: 'W 案操作', title: '步驟 5　產出 E-BOM',
     img: SHOTS + 'D_05_export.png', ar: 1280 / 820,
     marks: [[1, 710, 157], [2, 305, 237], [3, 422, 237], [4, 480, 300]],
     bullets: [
@@ -332,11 +332,11 @@ const SLIDES = [
     qa: [
       { q: '雙擊 .bat 一閃就關', a: '沒裝 Python 或沒加入 PATH。先跑「安裝.bat」看訊息。' },
       { q: '雙擊 .py 沒反應 / 閃退',
-        a: 'C 案的 .py 必須用 streamlit 啟動，一律走 run_C_streamlit.bat。' },
-      { q: 'C 案瀏覽器打不開',
+        a: 'S 案的 .py 必須用 streamlit 啟動，一律走 run_S_streamlit.bat。' },
+      { q: 'S 案瀏覽器打不開',
         a: '8601 埠被占用。改用 --server.port 8602 另開一個埠。' },
-      { q: 'D 案視窗開不起來',
-        a: '用 run_D_webview_debug.bat 看訊息，多半是缺 Edge WebView2 Runtime。' },
+      { q: 'W 案視窗開不起來',
+        a: '用 run_W_webview_debug.bat 看訊息，多半是缺 Edge WebView2 Runtime。' },
       { q: '說找不到零件資料庫',
         a: '檢查 xlsx 第 1 列是不是「P/N」與「Description」這兩個字。' },
       { q: '產出的檔案別的工具打不開',

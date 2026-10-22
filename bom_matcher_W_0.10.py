@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-bom_matcher_D_0.10.py  v0.10  —  D 案：pywebview 原生視窗版
+bom_matcher_W_0.10.py  v0.10  —  W 案：pywebview 原生視窗版
 
 啟動：
-    run_D_webview.bat          （雙擊）
-    python bom_matcher_D_0.10.py
-    python bom_matcher_D_0.10.py --dump-html   # 只輸出 UI 的 HTML（供瀏覽器檢視）
+    run_W_webview.bat          （雙擊）
+    python bom_matcher_W_0.10.py
+    python bom_matcher_W_0.10.py --dump-html   # 只輸出 UI 的 HTML（供瀏覽器檢視）
 
 工作目錄固定為「程式所在目錄」，不受啟動時的 cwd 影響。
 """
@@ -148,8 +148,13 @@ tr:hover td{filter:brightness(.985)}
             padding:9px 11px;color:#6b4413;white-space:pre-wrap}
 .note .act{display:flex;gap:7px;margin-top:9px}
 .console{background:#171B24;border-radius:12px;padding:10px 13px;font-family:Consolas,monospace;
-         font-size:11px;color:#c8cede;line-height:1.7;min-height:96px;max-height:190px;
+         font-size:11px;color:#c8cede;line-height:1.7;min-height:96px;
          overflow:auto;white-space:pre-wrap}
+/* 檔案設定／產出頁的日誌：吃掉版面剩下的高度，視窗放大就跟著變大。
+   原本寫死 max-height:190px，視窗拉大之後下面一大片都是空的。 */
+.page > .console{flex:1;min-height:120px}
+/* 比對結果右側欄位裡的日誌仍要有上限，否則會把明細擠出去 */
+.right .console{max-height:38vh;flex:none}
 .console .ok{color:#4ec97b}.console .wn{color:#e8b931}.console .er{color:#ff7b72}
 
 .foot{border-top:1px solid #E8EAED;background:#fff;margin:12px -24px 0;padding:10px 24px;
@@ -444,9 +449,17 @@ function renderDetail(){
   h+=`<div class="console">${S.log.map(fmt).join('\n')}</div>`;
   d.innerHTML=h;
 }
-const fmt = l => l.startsWith('✓')?`<span class="ok">${esc(l)}</span>`
-              : l.startsWith('✗')?`<span class="er">${esc(l)}</span>`
-              : l.startsWith('[')?`<span class="wn">${esc(l)}</span>`: esc(l);
+/* 這些前綴在日誌裡是縮排過的，要先去掉開頭空白再判斷 ——
+   原本只寫 l.startsWith('[')，所以 [請人工確認] / [警告] / [提示]
+   通通判不到，全部印成白字。規則與 core.log_class() 同一套。 */
+const LOG_RED  = ['[請人工確認]', '[警告]', '[提示]', '[錯誤]'];
+const fmt = l => {
+  const t = String(l).replace(/^\s+/, '');
+  const c = t.startsWith('✓') ? 'ok'
+          : (t.startsWith('✗') || LOG_RED.some(p => t.startsWith(p))) ? 'er'
+          : t.startsWith('[') ? 'wn' : '';
+  return c ? `<span class="${c}">${esc(l)}</span>` : esc(l);
+};
 
 function renderKn(){
   const hits=S.rows.map((r,i)=>[i,r]).filter(([,r])=>r.kn);
@@ -551,7 +564,7 @@ window.addEventListener('pywebviewready', ()=>{
 });
 setTimeout(()=>{ if(!LIVE()) document.getElementById('banner').innerHTML =
   '<div class="banner">預覽模式：這是用瀏覽器開啟的靜態畫面，未連上 Python。'
-  + '實際使用請執行 <b>run_D_webview.bat</b>。</div>'; }, 1500);
+  + '實際使用請執行 <b>run_W_webview.bat</b>。</div>'; }, 1500);
 </script></body></html>
 """
 
@@ -567,7 +580,7 @@ setTimeout(()=>{ if(!LIVE()) document.getElementById('banner').innerHTML =
 WIN = None
 
 # v0.10：標題列帶上啟動用的批次檔名稱，同時開 C/D 兩個介面時才分得出來
-LAUNCHER = 'run_D_webview.bat'
+LAUNCHER = 'run_W_webview.bat'
 APP_TITLE = f'BOM Matcher v{core.VERSION}  [{LAUNCHER}]'
 
 

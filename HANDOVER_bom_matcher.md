@@ -12,33 +12,33 @@ v0.07 起拆成「一個核心 + 兩套前端」。v0.06 的 tkinter GUI 已由 
 | 檔案 | 角色 | 行數 |
 |---|---|---|
 | `bom_core_0.07.py` | 核心邏輯（解析／比對／Knowledge／Excel 輸出）＋ CLI | ~700 |
-| `bom_matcher_C_0.07.py` | **C 案**：Streamlit 網頁版 | ~330 |
-| `bom_matcher_D_0.07.py` | **D 案**：pywebview 原生視窗版（HTML 內嵌） | ~640 |
-| `run_C_streamlit.bat` | C 案啟動捷徑（port 8601） | — |
-| `run_D_webview.bat` | D 案啟動捷徑 | — |
-| `.streamlit\config.toml` | C 案主題（primaryColor `#4F46E5`） | — |
+| `bom_matcher_C_0.07.py` | **S 案**：Streamlit 網頁版 | ~330 |
+| `bom_matcher_D_0.07.py` | **W 案**：pywebview 原生視窗版（HTML 內嵌） | ~640 |
+| `run_S_streamlit.bat` | S 案啟動捷徑（port 8601） | — |
+| `run_W_webview.bat` | W 案啟動捷徑 | — |
+| `.streamlit\config.toml` | S 案主題（primaryColor `#4F46E5`） | — |
 
 **版本規則：** 每次進版 +0.01，程式檔名含版號。
 
 ### 執行方式
 ```
-雙擊 run_C_streamlit.bat        # C 案：瀏覽器 http://localhost:8601
-雙擊 run_D_webview.bat          # D 案：原生視窗
+雙擊 run_S_streamlit.bat        # S 案：瀏覽器 http://localhost:8601
+雙擊 run_W_webview.bat          # W 案：原生視窗
 
 python bom_core_0.07.py                    # CLI 全自動
 python bom_core_0.07.py -o out.xlsx
 python bom_core_0.07.py BOM.txt db.xlsx -k Knowledge.xlsx -p pcb.jpg
 python bom_core_0.07.py --no-split         # 關閉替代料拆列
 
-python bom_matcher_D_0.07.py --dump-html   # 輸出 D 案 UI 的 HTML
+python bom_matcher_D_0.07.py --dump-html   # 輸出 W 案 UI 的 HTML
 python bom_matcher_D_0.07.py --selftest    # 自動跑完流程後關閉（驗證用）
 ```
 
 ### 依賴套件
 ```
 pip install pandas openpyxl pillow                # 核心
-pip install streamlit streamlit-option-menu       # C 案
-pip install pywebview                             # D 案
+pip install streamlit streamlit-option-menu       # S 案
+pip install pywebview                             # W 案
 ```
 實測環境：Python 3.14.4 / pandas 3.0.3 / openpyxl 3.1.5 / streamlit 1.62.0 / pywebview 6.2.1
 
@@ -178,12 +178,12 @@ v0.07 起 **逐列比對**（每個拆出來的 P/N 各自比對自己的描述�
 
 ## 兩案的坑（實作時踩過，別再踩）
 
-### C 案 Streamlit
+### S 案 Streamlit
 - **`st.data_editor` 不套用 pandas Styler 底色** → 「可編輯」與「三色底」無法並存。目前分兩個頁籤：`✎ 編輯`（emoji 狀態欄）／`🎨 色底檢視`（唯讀 Styler）。要兩者兼得得換 `streamlit-aggrid`。
 - **`st.data_editor` 把 `None` / `pd.NA` / `Int64` 空值渲染成字串 `"None"`** → Item / Qty 兩欄改用字串表示，存回時再轉 int。
 - 版面只能單欄由上而下，沒有原生檔案選擇器（用下拉選單＋手動輸入路徑替代）。
 
-### D 案 pywebview
+### W 案 pywebview
 - **不能把 window 物件掛成 `self.window`** → pywebview 會遞迴序列化 js_api 的公開屬性，走進 `window.native.AccessibilityObject.Bounds.Empty...` 造成 `maximum recursion depth exceeded`，視窗當場關閉。window 一律放模組層變數 `WIN`。
 - **`window.pywebview` 是載入後才注入的**，腳本執行當下判定必為 undefined。要用即時檢查 `LIVE()`，別在載入時就決定「預覽模式」。
 - 表格儲存格裡放 `<input>` 時，色點要包一層 flex，否則 input 是 block 會把色點擠到上一行。
@@ -250,7 +250,7 @@ v0.10 實測發現**不夠**：widget 值綁在「widget 身分」上，同一�
 | 藏掉 Deploy | `.streamlit\config.toml` `toolbarMode = "viewer"`（Q3）|
 | ADATA LOGO | 比照 Firmware Tool，C/D 左上角換成 `adata.png`（蜂鳥）；找不到檔案時回退成「B」徽章 |
 | 彩蛋 | 按住 **Shift** 連點三次 LOGO → 小蜜蜂遊戲。沒有開關、介面上沒有任何提示（比照 Firmware Tool）|
-| SOP 對照檢查 | C/D 介面逐項比對 SOP，補齊／改正十幾處；C 案截圖全部重拍，新增兩頁 → 33 頁 |
+| SOP 對照檢查 | C/D 介面逐項比對 SOP，補齊／改正十幾處；S 案截圖全部重拍，新增兩頁 → 33 頁 |
 | HTML 版 SOP 截圖全空白 | `preview.py` 修正（見下）|
 
 ### 彩蛋（小蜜蜂）的結構
@@ -258,9 +258,9 @@ v0.10 實測發現**不夠**：widget 值綁在「widget 身分」上，同一�
 - 遊戲本體與 LOGO 讀取都在 `bom_core` 第 14b 節：`BEE_GAME_JS`（定義
   `window.bmBeeGame(canvas, onExit)`，回傳 `stop()`）、`app_logo_uri()`、
   `EGG_CLICKS = 3`、`EGG_WINDOW_MS = 3000`。C/D 兩案共用同一份。
-- D 案：`page_html()` 把 HTML 裡的 `__LOGO_TAG__` / `__VER__` /
+- W 案：`page_html()` 把 HTML 裡的 `__LOGO_TAG__` / `__VER__` /
   `/*__BEE_GAME__*/` 等佔位字串換掉，遊戲視窗是 `#egg` 覆蓋層。
-- C 案：用 **Custom Components v2**（`st.components.v2.component('bm_brand')`）
+- S 案：用 **Custom Components v2**（`st.components.v2.component('bm_brand')`）
   畫品牌區。連點計數全在瀏覽器端，不回 Python；遊戲覆蓋層掛在
   `document.body`，不受側邊欄版面與 Shadow DOM 樣式限制。
   ⚠️ 不要改用 `st.components.v1.html` —— v1 已棄用，而且是 iframe，
@@ -281,11 +281,11 @@ v0.10 實測發現**不夠**：widget 值綁在「widget 身分」上，同一�
 
 ### 截圖怎麼重拍（不必開真的視窗）
 
-- **D 案**：載入 `bom_matcher_D_0.10.py`，用 `Api().run_match()` 拿實際狀態，
+- **W 案**：載入 `bom_matcher_W_0.10.py`，用 `Api().run_match()` 拿實際狀態，
   `page_html()` 加一段假的 `window.pywebview.api`（回傳同一份 state），
   用 headless Chrome 截圖。舊截圖含 31px 的 Windows 標題列，
   SOP 的 marks 座標是照那個算的 —— 重拍時把舊圖的標題列貼回去，marks 就不用改。
-- **C 案**：`streamlit run` 起一個實例，用 Chrome DevTools Protocol 點按鈕後截圖。
+- **S 案**：`streamlit run` 起一個實例，用 Chrome DevTools Protocol 點按鈕後截圖。
   寬度用 1440（1280 時「瀏覽…」按鈕會折成兩行），SOP 的 `ar` 改成 `1440 / 942`。
 - ⚠️ 用 Chrome，不要用 Edge headless —— Edge 會在畫面右緣疊一個浮動圖示，
   不在 DOM 裡，CSS 藏不掉。
@@ -389,7 +389,7 @@ python tools/build_dist.py --slim-only       # 只要精簡版
 | `docs/sop/layout.js` | 投影片尺寸與邊界常數 |
 | `docs/sop/build.js` | 產出 .pptx（pptxgenjs） |
 | `docs/sop/preview.py` | **從產出的 .pptx 反向解析實際座標**畫成 preview.html |
-| `docs/sop/shots/` | 9 張實機截圖（D 案用 PrintWindow 擷取視窗，非螢幕截圖） |
+| `docs/sop/shots/` | 9 張實機截圖（W 案用 PrintWindow 擷取視窗，非螢幕截圖） |
 
 ```bash
 cd docs/sop && npm install pptxgenjs     # 第一次
@@ -453,7 +453,7 @@ v0.10 的 T1–T5 全部完成，目前沒有待辦。
 | Q3 | Streamlit 右上角 Deploy 與 ⋮ 選單 | 2026-10-21 | **已處理**（toolbarMode = viewer，SOP 已補說明）|
 
 **Q1　Location 欄顯示前綴 —— 已確認保留**
-C 案 `_rows_to_df()`、D 案 `_rows_js()` 都套上 `core.tag_side()`，
+S 案 `_rows_to_df()`、W 案 `_rows_js()` 都套上 `core.tag_side()`，
 畫面與輸出 Excel 一致。改過的值寫回 `ref_top` / `ref_bot` 會帶著前綴，
 寫 Excel 時 `tag_side()` 冪等，不會疊成 `(T)(T)`。
 
@@ -510,8 +510,8 @@ SOP 第 14 頁「右上角的選單（三個點）」照這兩項寫。
 | 版本 | 檔案 | 怎麼算過關 |
 |---|---|---|
 | CLI | `run_CLI.bat` → `bom_core_0.XX.py` 的 `main()` | 真實 cmd 跑完，訊息與產出都正確 |
-| Streamlit（C 案） | `bom_matcher_C_0.XX.py` | 真實瀏覽器操作過該功能 |
-| pywebview（D 案） | `bom_matcher_D_0.XX.py` | 視窗開起來截圖，或 `--selftest` 跑完並貼結果 |
+| Streamlit（S 案） | `bom_matcher_C_0.XX.py` | 真實瀏覽器操作過該功能 |
+| pywebview（W 案） | `bom_matcher_D_0.XX.py` | 視窗開起來截圖，或 `--selftest` 跑完並貼結果 |
 
 共用邏輯一律放 `bom_core`，前端只做 UI；但**前端的文字、欄位、提示也要一起改**，
 不能只改 core 就宣稱三版都好了。回報時三個版本的執行結果分開貼。
@@ -539,7 +539,7 @@ SOP 第 14 頁「右上角的選單（三個點）」照這兩項寫。
 （挑錯版本的 deck、沒讀透明度導致截圖全白、沒讀段落對齊導致置中失效）。
 PPTX 本身就能看、能投影、能列印，不值得為第二種格式付這個成本。
 
-SOP 的截圖以 **D 案（pywebview）** 為主，C 案只放差異頁。
+SOP 的截圖以 **W 案（pywebview）** 為主，S 案只放差異頁。
 所有截圖頁都要有編號標記（方案 A），`build.js` 會在建置時檢查
 「標記數 == 說明條目數」，不相等直接中斷。
 
@@ -550,14 +550,15 @@ SOP 的截圖以 **D 案（pywebview）** 為主，C 案只放差異頁。
 根目錄與 `docs\` 只保留**目前版本**的檔案，其餘全部搬到 `old\`：
 
 ```
-根目錄   bom_core_0.10.py  bom_matcher_C_0.10.py  bom_matcher_D_0.10.py
+根目錄   bom_core_0.10.py  bom_matcher_S_0.10.py  bom_matcher_W_0.10.py
          changelog_BOM_matcher_v0.10.txt  HANDOVER_bom_matcher.md
          requirements.txt  五個 .bat  pcb.jpg  adata.png
 docs\    BOM_Matcher_v0.10_操作SOP.pptx
 ```
 
 搬動後記得檢查有沒有程式還指著舊路徑 ——
-`toolsegress.py` 會載入前一版的 core 做回歸，路徑要跟著改成 `old/`。
+`tools
+egress.py` 會載入前一版的 core 做回歸，路徑要跟著改成 `old/`。
 
 ---
 
@@ -581,8 +582,8 @@ docs\    BOM_Matcher_v0.10_操作SOP.pptx
 | # | 項目 | 怎麼算過關 |
 |---|---|---|
 | 1 | `run_CLI.bat` | 用**真實 cmd** 執行（不是 PowerShell 管線），中文與 ✓ 不亂碼、`pause` 有停住、產出 xlsx |
-| 2 | `run_C_streamlit.bat` | 真實 cmd 啟動 → 8601 埠 LISTENING → **真實瀏覽器**開得起來 → 跑完偵測/比對/編輯/產出 |
-| 3 | `run_D_webview.bat` | 視窗真的開起來並截圖；或用 `--selftest` 驅動整條流程並貼出結果 |
+| 2 | `run_S_streamlit.bat` | 真實 cmd 啟動 → 8601 埠 LISTENING → **真實瀏覽器**開得起來 → 跑完偵測/比對/編輯/產出 |
+| 3 | `run_W_webview.bat` | 視窗真的開起來並截圖；或用 `--selftest` 驅動整條流程並貼出結果 |
 | 4 | `install_requirements.bat` | 真實 cmd 執行到最後的檢查區塊 |
 | 5 | 每個 .bat 的位元組 | `CRLF > 0`、`lone-LF == 0`、`全部 ASCII` |
 | 6 | 壓縮包 | **解壓到全新路徑**再跑一次 1～4（驗證「工作目錄＝程式所在目錄」） |
@@ -598,11 +599,11 @@ docs\    BOM_Matcher_v0.10_操作SOP.pptx
 ```
 F:\AI_BOM\
   bom_core_0.07.py                 核心 + CLI
-  bom_matcher_C_0.07.py            C 案 Streamlit
-  bom_matcher_D_0.07.py            D 案 pywebview
-  run_C_streamlit.bat              C 案捷徑
-  run_D_webview.bat                D 案捷徑
-  .streamlit\config.toml           C 案主題
+  bom_matcher_C_0.07.py            S 案 Streamlit
+  bom_matcher_D_0.07.py            W 案 pywebview
+  run_S_streamlit.bat              S 案捷徑
+  run_W_webview.bat                W 案捷徑
+  .streamlit\config.toml           S 案主題
   changelog_BOM_matcher_v0.07.txt  完整版本歷史（v0.01–v0.07）
   HANDOVER_bom_matcher.md          本文件
   bom_matcher_0.06.py              上一版（tkinter，保留備援）

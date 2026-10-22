@@ -44,12 +44,12 @@ WHEELS_CACHE = DIST / "wheels_cache"
 
 PROGRAM_FILES = [
     f"bom_core_{VER}.py",
-    f"bom_matcher_C_{VER}.py",
-    f"bom_matcher_D_{VER}.py",
+    f"bom_matcher_S_{VER}.py",
+    f"bom_matcher_W_{VER}.py",
     "run_CLI.bat",
-    "run_C_streamlit.bat",
-    "run_D_webview.bat",
-    "run_D_webview_debug.bat",
+    "run_S_streamlit.bat",
+    "run_W_webview.bat",
+    "run_W_webview_debug.bat",
     "requirements.txt",
     f"changelog_BOM_matcher_v{VER}.txt",
     "HANDOVER_bom_matcher.md",
@@ -89,17 +89,17 @@ CHECK_TAIL = (
     "m.version('openpyxl'),'/ pillow',m.version('pillow'))\""
     " 2>nul || echo   [--] 核心     未安裝\r\n"
     "\"%PYEXE%\" -c \"import streamlit,importlib.metadata as m;"
-    "print('  [OK] C 案     streamlit',m.version('streamlit'))\""
-    " 2>nul || echo   [--] C 案     streamlit 未安裝\r\n"
+    "print('  [OK] S 案     streamlit',m.version('streamlit'))\""
+    " 2>nul || echo   [--] S 案     streamlit 未安裝\r\n"
     "\"%PYEXE%\" -c \"import webview,importlib.metadata as m;"
-    "print('  [OK] D 案     pywebview',m.version('pywebview'))\""
-    " 2>nul || echo   [--] D 案     pywebview 未安裝\r\n"
+    "print('  [OK] W 案     pywebview',m.version('pywebview'))\""
+    " 2>nul || echo   [--] W 案     pywebview 未安裝\r\n"
     "echo ============================================================\r\n"
     "echo.\r\n"
     "echo   接著可以執行：\r\n"
     "echo     run_CLI.bat           先用命令列確認核心正常\r\n"
-    "echo     run_C_streamlit.bat   C 案（瀏覽器介面）\r\n"
-    "echo     run_D_webview.bat     D 案（原生視窗）\r\n"
+    "echo     run_S_streamlit.bat   S 案（瀏覽器介面）\r\n"
+    "echo     run_W_webview.bat     W 案（原生視窗）\r\n"
     "echo.\r\n"
     "pause\r\n"
 )
@@ -276,7 +276,7 @@ def readme_txt(offline: bool) -> str:
 
 Altium Text BOM + Excel 零件資料庫  →  ADATA E-BOM 格式 Excel
 
-本包含兩套介面（C 案 / D 案）與一套 CLI，共用同一份核心邏輯，
+本包含兩套介面（S 案 / W 案）與一套 CLI，共用同一份核心邏輯，
 產出的 Excel 完全相同。附可直接執行的範例資料。
 
 
@@ -295,17 +295,17 @@ Altium Text BOM + Excel 零件資料庫  →  ADATA E-BOM 格式 Excel
   run_CLI.bat            命令列，不需要 streamlit / pywebview
                          建議第一次先跑這個確認核心正常
 
-  run_C_streamlit.bat    C 案．瀏覽器介面
+  run_S_streamlit.bat    S 案．瀏覽器介面
                          http://localhost:8601
                          使用期間請勿關掉那個黑色主控台視窗
-                         ★ 不要直接雙擊 bom_matcher_C_{VER}.py，不會開網頁
+                         ★ 不要直接雙擊 bom_matcher_S_{VER}.py，不會開網頁
 
-  run_D_webview.bat      D 案．原生視窗，不需要瀏覽器
-  run_D_webview_debug.bat  同上，但保留主控台（出問題時用這支）
+  run_W_webview.bat      W 案．原生視窗，不需要瀏覽器
+  run_W_webview_debug.bat  同上，但保留主控台（出問題時用這支）
 
   兩個介面的標題列會標出是哪支 .bat 啟動的，同時開也分得出來：
-      BOM Matcher v{VER}  [run_C_streamlit.bat]
-      BOM Matcher v{VER}  [run_D_webview.bat]
+      BOM Matcher v{VER}  [run_S_streamlit.bat]
+      BOM Matcher v{VER}  [run_W_webview.bat]
 
 
 ■ 操作流程（C / D 兩案相同）
@@ -355,7 +355,7 @@ Altium Text BOM + Excel 零件資料庫  →  ADATA E-BOM 格式 Excel
       比對完成: 命中 55 / 未命中 58 / 替代料群組 29 / Knowledge 命中 4 列
       113 項（含PCB）→ 151 列（替代料拆出 38 列）  |  Total Qty = 384
 
-  C 案、D 案跑同一份資料，數字必須完全一樣。
+  S 案、W 案跑同一份資料，數字必須完全一樣。
 
 
 ■ v{VER} 的重點
@@ -368,7 +368,7 @@ Altium Text BOM + Excel 零件資料庫  →  ADATA E-BOM 格式 Excel
     只放寬電容耐壓 —— 電流與誤差不放寬，那是功能性錯誤。
   • C/D 畫面上的 Location 欄也帶 (T)/(B)，與輸出 Excel 一致
   • 輸出路徑已經有同名檔時會先問，不會無聲蓋掉
-  • 左上角換成 ADATA LOGO；C 案右上角的 Deploy 按鈕已拿掉
+  • 左上角換成 ADATA LOGO；S 案右上角的 Deploy 按鈕已拿掉
   • 用語統一：位號 → Location、面別 → Top/Bot、chip → 篩選鈕
   • 操作 SOP 改成標註式版面：截圖上標 ①②③，右側說明同號對應
   • 雙面板：給 Location 對照表就多一欄 Location-Bottom Layer；
@@ -399,12 +399,12 @@ Altium Text BOM + Excel 零件資料庫  →  ADATA E-BOM 格式 Excel
   Q. 雙擊 .bat 一閃就關
      A. 沒裝 Python 或沒加入 PATH。先跑「安裝.bat」看訊息。
 
-  Q. C 案瀏覽器打不開
+  Q. S 案瀏覽器打不開
      A. 8601 埠被占用。改執行：
-        python -m streamlit run bom_matcher_C_{VER}.py --server.port 8602
+        python -m streamlit run bom_matcher_S_{VER}.py --server.port 8602
 
-  Q. D 案視窗開不起來
-     A. 用 run_D_webview_debug.bat 看訊息。
+  Q. W 案視窗開不起來
+     A. 用 run_W_webview_debug.bat 看訊息。
         多半是缺 Microsoft Edge WebView2 Runtime（Win11 內建）。
         https://developer.microsoft.com/microsoft-edge/webview2/
 
