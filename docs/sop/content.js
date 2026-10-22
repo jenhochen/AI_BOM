@@ -100,20 +100,19 @@ const SLIDES = [
   { kind: 'divider', section: 'S 案操作', n: '03', title: 'S 案　瀏覽器介面' },
 
   { kind: 'shot', section: 'S 案操作', title: '步驟 1　檔案設定',
-    img: SHOTS + 'C_01_files.jpg', ar: 1440 / 942, shotw: 1440,
-    marks: [[1, 577, 226], [2, 470, 533], [3, 570, 813],
-            [4, 826, 213], [5, 784, 905]],
+    img: SHOTS + 'S_01_files.png', ar: 1440 / 942, shotw: 1440,
+    marks: [[1, 575, 226], [2, 470, 533], [3, 821, 213]],
     bullets: [
       '上面四個檔案由程式自動偵測，候選依**最後修改時間**排序，最新的排第一個',
       '「雙面板（選填）」區塊：Location TOP/BOT 對照表、PCB 圖片（BOT 面）',
-      '綠色「雙面板模式」／藍色「單面板模式」告訴你這次會怎麼輸出',
       '不對就按右邊的「瀏覽…」，或選「— 手動輸入路徑 —」自己貼路徑',
-      '輸出路徑預設在 output\\，副檔名一律強制 .xlsx',
     ],
-    warn: '確認 Text BOM 是你這次要跑的那一支。\n選錯檔案是最常見的失誤。' },
+    warn: '綠色「雙面板模式」／藍色「單面板模式」會告訴你這次會怎麼輸出；'
+        + '輸出路徑預設在 output\\，副檔名強制 .xlsx。\n'
+        + '確認 Text BOM 是你這次要跑的那一支 —— 選錯檔案是最常見的失誤。' },
 
   { kind: 'shot', section: 'S 案操作', title: '檔案不在預設清單裡',
-    img: SHOTS + 'C_02_browser.jpg', ar: 1440 / 942, shotw: 1440,
+    img: SHOTS + 'S_02_browser.png', ar: 1440 / 942, shotw: 1440,
     marks: [[1, 466, 281], [2, 737, 477], [3, 468, 345], [4, 577, 226]],
     bullets: [
       '展開「📂 目錄瀏覽器」就能自己翻資料夾',
@@ -124,30 +123,30 @@ const SLIDES = [
     warn: '「瀏覽…」開的是 Windows 原生對話框，偶爾會躲在瀏覽器視窗後面。\n找不到就改用目錄瀏覽器，功能一樣。' },
 
   { kind: 'shot', section: 'S 案操作', title: '步驟 2　比對結果',
-    img: SHOTS + 'C_03_rows.jpg', ar: 1440 / 942, shotw: 1440,
-    marks: [[1, 570, 222], [2, 1005, 487], [3, 420, 937], [4, 399, 417]],
+    img: SHOTS + 'S_03_rows.png', ar: 1440 / 942, shotw: 1440,
+    marks: [[1, 570, 222], [2, 440, 318], [3, 1005, 527], [4, 399, 457]],
     bullets: [
       '上方六個數字：總項次 / 輸出列數 / 命中 P/N / 未命中 / Knowledge / Total Qty',
+      '「**⤢ 放大表格**」一次看三倍的列數（151 列預設只看得到十幾列）',
       '表格可直接改 P/N、RC/EC、Description、Qty、Location（帶 **(T)/(B)**，同 Excel）',
-      '改完按「儲存修改」才會帶進產出的 Excel',
       '狀態欄：🔴 R8 降壓選料　⚠️ Location 未知　🟠🟡🟢 對應 Excel 色底',
     ],
     warn: 'S 案的「✎ 編輯」頁籤不顯示色底 —— 這是 Streamlit 的限制。\n要看色底請切到「🎨 色底檢視」頁籤（唯讀）。' },
 
   { kind: 'shot', section: 'S 案操作', title: '步驟 3　產出 E-BOM',
-    img: SHOTS + 'C_04_export.jpg', ar: 1440 / 942, shotw: 1440,
-    marks: [[1, 430, 312], [2, 428, 360], [3, 700, 618], [4, 423, 488]],
+    img: SHOTS + 'S_04_export.png', ar: 1440 / 942, shotw: 1440,
+    marks: [[1, 865, 156], [2, 865, 256], [3, 389, 312], [4, 865, 500]],
     bullets: [
-      '輸出路徑已經有同名檔時會出現黃色警告，要勾「確認覆蓋」才按得下去',
-      '按「▶ 產出 Excel」，檔案直接寫到輸出路徑',
-      '下方日誌會列出 PCB 圖片尺寸、實際輸出路徑、項數與 Total Qty',
-      '「⤓ 下載 xlsx」可另存一份到瀏覽器的下載目錄',
+      '上方灰框是這次要寫出去的完整路徑',
+      '已經有同名檔時會出現**黃色警告**',
+      '要勾「確認覆蓋」，「▶ 產出 Excel」才按得下去（沒勾是灰的）',
+      '下方日誌和 W 案同一套配色：✓ 綠、**[請人工確認] / [警告] / [提示] 紅**',
     ],
     warn: '最後一行的「113 項（含PCB）→ 151 列」要對得上預期。\n列數比項數多，是因為替代料被拆成獨立列。' },
 
   { kind: 'shot', section: 'S 案操作', title: '右上角的選單（三個點）',
-    img: SHOTS + 'C_05_menu.jpg', ar: 1440 / 942, shotw: 1440,
-    marks: [[1, 1258, 70], [2, 1395, 104], [3, 1407, 30], [4, 150, 654]],
+    img: SHOTS + 'S_05_menu.png', ar: 1440 / 942, shotw: 1440,
+    marks: [[1, 1290, 70], [2, 1290, 104], [3, 1399, 29], [4, 150, 654]],
     bullets: [
       '只剩兩項：**Print**（列印目前頁面）、**Record screen**（把操作過程錄成影片）',
       'Record screen 適合回報問題：錄下操作步驟，存成檔案寄給維護人員',
@@ -173,7 +172,7 @@ const SLIDES = [
   { kind: 'divider', section: 'W 案操作', n: '04', title: 'W 案　原生視窗' },
 
   { kind: 'shot', section: 'W 案操作', title: '步驟 1　檔案設定',
-    img: SHOTS + 'D_01_files.png', ar: 1280 / 820,
+    img: SHOTS + 'W_01_files.png', ar: 1280 / 820,
     marks: [[1, 1200, 145], [2, 787, 382], [3, 787, 446],
             [4, 428, 543], [5, 700, 700], [6, 467, 577]],
     bullets: [
@@ -187,7 +186,7 @@ const SLIDES = [
     warn: '標題列會標出啟動用的 .bat：\nBOM Matcher v0.10　[run_W_webview.bat]' },
 
   { kind: 'shot', section: 'W 案操作', title: '步驟 2　比對結果與人工修正',
-    img: SHOTS + 'D_02_rows.png', ar: 1280 / 820,
+    img: SHOTS + 'W_02_rows.png', ar: 1280 / 820,
     marks: [[1, 300, 329], [2, 390, 457], [3, 300, 259], [4, 300, 791]],
     bullets: [
       '點任何一列，右側會顯示該料件的 Footprint、RC/EC、P/N、Qty、比對狀態',
@@ -198,7 +197,7 @@ const SLIDES = [
     warn: '改了 Qty，右上角的 Total Qty 會立刻跟著變，\n可以用來確認改對了。' },
 
   { kind: 'shot', section: 'W 案操作', title: '步驟 3　Knowledge 命中確認',
-    img: SHOTS + 'D_03_knowledge.png', ar: 1280 / 820,
+    img: SHOTS + 'W_03_knowledge.png', ar: 1280 / 820,
     marks: [[1, 290, 138], [2, 460, 193], [3, 1193, 137], [4, 500, 441]],
     bullets: [
       '列出所有命中 Knowledge 的料件與對應注意事項',
@@ -209,7 +208,7 @@ const SLIDES = [
     warn: '包裝比對是子字串，可能誤命中。\n例如品名「TVS」會命中講 SOD-523 的條目，要人工判斷。' },
 
   { kind: 'shot', section: 'W 案操作', title: '步驟 4　表頭資訊',
-    img: SHOTS + 'D_04_header.png', ar: 1280 / 820,
+    img: SHOTS + 'W_04_header.png', ar: 1280 / 820,
     marks: [[1, 380, 144], [2, 380, 230], [3, 380, 402], [4, 820, 488]],
     bullets: [
       '對應輸出 Excel 的 rows 3–8',
@@ -219,7 +218,7 @@ const SLIDES = [
     ] },
 
   { kind: 'shot', section: 'W 案操作', title: '步驟 5　產出 E-BOM',
-    img: SHOTS + 'D_05_export.png', ar: 1280 / 820,
+    img: SHOTS + 'W_05_export.png', ar: 1280 / 820,
     marks: [[1, 710, 157], [2, 305, 237], [3, 422, 237], [4, 480, 300]],
     bullets: [
       '輸出路徑可以直接在這裡改，或按右邊的「變更…」',
@@ -234,7 +233,7 @@ const SLIDES = [
   { kind: 'divider', section: '雙面板', n: '05', title: '雙面板　TOP / BOT' },
 
   { kind: 'shot', section: '雙面板', title: 'Location 查不到 Top/Bot 時',
-    img: SHOTS + 'D_06_unknown.png', ar: 1280 / 820,
+    img: SHOTS + 'W_06_unknown.png', ar: 1280 / 820,
     marks: [[1, 722, 259], [2, 300, 344], [3, 862, 356], [4, 1080, 530]],
     bullets: [
       '表格上方的「Location 未知」篩選鈕可以只看有問題的列',
@@ -268,7 +267,7 @@ const SLIDES = [
   { kind: 'divider', section: '降壓選料', n: '06', title: '電容降壓選料　R8' },
 
   { kind: 'shot', section: '降壓選料', title: '耐壓低於原始設計的替代料',
-    img: SHOTS + 'D_07_r8.png', ar: 1280 / 820,
+    img: SHOTS + 'W_07_r8.png', ar: 1280 / 820,
     marks: [[1, 683, 254], [2, 300, 344], [3, 530, 344], [4, 520, 791]],
     bullets: [
       '表格上方的「需確認」篩選鈕只看這一類，數字是筆數',
