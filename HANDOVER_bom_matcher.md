@@ -530,6 +530,33 @@ SOP 第 14 頁「右上角的選單（三個點）」照這兩項寫。
 4. 驗證：pptx validator 必須 All validations PASSED
 5. 交付包只放 **PPTX**，目錄超連結要能跳
 
+### 操作 SOP 影片（2026-10-27 起）
+
+`python tools\sop_video.py` → `docs\BOM_Matcher_vX.XX_操作SOP.mp4`
+（H.265 / hvc1、1920x1080、30fps）＋ 同名 `.srt`。
+
+| 環節 | 作法 |
+|---|---|
+| 投影片轉圖 | `preview.py` 反解正式 pptx → CDP 逐張 `captureScreenshot` 加 clip |
+| 版面檢查 | 讀 `window.__report`，**有爆框就中止**（`--ignore-layout` 可強制） |
+| 旁白 | Windows SAPI 的 zh-TW 語音，**逐句**合成，字幕時間軸才對得準 |
+| 字幕 | 燒進畫面（微軟正黑體）＋ 另掛一軌 `mov_text`＋ 旁邊一份 `.srt` |
+| 版面 | 投影片 1920x960 在上，下方 120px 深色帶放字幕，**不蓋住內容** |
+| ffmpeg | `imageio-ffmpeg` 自帶（含 libx265），不必裝系統程式 |
+
+⚠️ **`preview.py` 是「近似重畫」，不是 pptx 本身。**
+它用 python-pptx 讀座標再用 HTML 畫，pptx 的細節要一項一項補。
+已經為此修過三次：挑錯版本的 deck、沒讀透明度（截圖整張被白塊蓋掉）、
+沒讀段落對齊（置中失效）、沒讀垂直置中（編號數字飄到圓點外）。
+**每次產影片都要實際抽幀看過畫面**，不能只看它有沒有跑完。
+
+⚠️ `--reuse-tts` 只有在句數完全相同時才安全。改過 content.js 的文字就要重新合成，
+否則聲音會和字幕錯開（腳本已加防呆：多出來的音檔存在就不沿用）。
+
+交付包**不放影片** —— 精簡版本來 1.6MB，放進去會變 18MB。影片單獨給。
+
+---
+
 ### ★ HTML 版 SOP 已停止維護（2026-10-21 起）
 
 `docs\sop\preview.py` 留在版控裡當參考，但**不再執行、不再進交付包**。

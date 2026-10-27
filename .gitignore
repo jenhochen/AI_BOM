@@ -29,3 +29,6 @@ docs/sop/preview.html
 
 # D 案 --dump-html 的除錯產物
 preview_D_ui.html
+
+# ── SOP 影片的工作目錄（33 張截圖 + 106 段旁白 + 中繼檔，約 200MB）──────
+docs/_video/

@@ -142,7 +142,17 @@ def shape_html(sh):
             getattr(p.alignment, "value", None), "")
         sty = f' style="text-align:{al}"' if al else ""
         paras.append(f'<p{sty}>%s</p>' % ("".join(runs) or "&nbsp;"))
-    return (f'<div class="sh txt" style="{style}{fill_css(sh)}">'
+    # 垂直置中：編號圓點的數字用的是比圓點大一圈、valign=middle 的文字框，
+    # 不處理的話數字會貼在框的上緣 —— 看起來就是「圓點上面飄一個數字」。
+    va = ""
+    try:
+        if "MIDDLE" in str(sh.text_frame.vertical_anchor):
+            va = "display:flex;flex-direction:column;justify-content:center;"
+        elif "BOTTOM" in str(sh.text_frame.vertical_anchor):
+            va = "display:flex;flex-direction:column;justify-content:flex-end;"
+    except Exception:
+        pass
+    return (f'<div class="sh txt" style="{style}{fill_css(sh)}{va}">'
             f'{"".join(paras)}</div>')
 
 
