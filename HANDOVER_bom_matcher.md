@@ -530,6 +530,33 @@ SOP 第 14 頁「右上角的選單（三個點）」照這兩項寫。
 4. 驗證：pptx validator 必須 All validations PASSED
 5. 交付包只放 **PPTX**，目錄超連結要能跳
 
+### ★ 交付後要同步到 Teams（2026-10-28 起）
+
+每次產出新版本，除了 `dist\`，還要把檔案放上 Teams：
+
+```
+OBM/SBM HW RD  ›  03_AI Tool.蜂鳥助手  ›  已共用
+```
+
+要放的兩個檔：
+
+| 檔案 | 來源 |
+|---|---|
+| `BOM_Matcher_vX.XX_完整離線安裝版.zip` | `dist\` |
+| `BOM_Matcher_vX.XX_操作SOP.pptx` | `docs\` |
+
+`tools\build_dist.py` 跑完會把這兩個檔複製到 `dist\_上傳Teams\`，直接整個資料夾拖進瀏覽器就好。
+
+⚠️ **目前只能手動拖曳。** 那個文件庫沒有同步到本機（OneDrive 沒在跑、
+沒有任何同步資料夾），所以程式碰不到它。
+
+要讓這一步自動化，在 Teams 的「已共用」頁面按**「新增 OneDrive 捷徑」**
+（或「同步」），資料夾會出現在
+`C:\Users\<user>\ADATA Technology Co., Ltd\...` 之類的路徑下，
+之後 `build_dist.py` 就能直接複製過去。做好之後把路徑寫進這一節。
+
+---
+
 ### 操作 SOP 影片（2026-10-27 起）
 
 `python tools\sop_video.py` → `docs\BOM_Matcher_vX.XX_操作SOP.mp4`

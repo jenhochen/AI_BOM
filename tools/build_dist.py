@@ -492,6 +492,31 @@ def refresh_wheels():
                     "-d", str(WHEELS_CACHE)], check=True)
 
 
+def stage_for_teams():
+    """
+    把要放上 Teams 的兩個檔案集中到 dist\\_上傳Teams\\。
+
+    Teams 的「03_AI Tool.蜂鳥助手 › 已共用」沒有同步到本機，程式碰不到，
+    所以只能先備妥、由人拖曳上傳。哪天那個文件庫同步下來了，
+    這裡改成直接複製過去就好（路徑記在 HANDOVER）。
+    """
+    out = DIST / "_上傳Teams"
+    out.mkdir(exist_ok=True)
+    want = [DIST / f"BOM_Matcher_v{VER}_完整離線安裝版.zip",
+            ROOT / "docs" / f"BOM_Matcher_v{VER}_操作SOP.pptx"]
+    for f in out.iterdir():          # 清掉舊版，免得拖到過期的檔
+        if f.is_file():
+            f.unlink()
+    for f in want:
+        if f.is_file():
+            shutil.copy2(f, out / f.name)
+        else:
+            print(f"  [警告] 找不到 {f.name}，Teams 資料夾會缺這一個")
+    print(f"\n  要上傳 Teams 的檔案已備妥 -> {out}")
+    for f in sorted(out.iterdir()):
+        print(f"    {f.name}  ({f.stat().st_size / 1048576:.1f} MB)")
+
+
 def main():
     ap = argparse.ArgumentParser(description=f"BOM Matcher v{VER} 交付包")
     ap.add_argument("--slim-only", action="store_true")
@@ -506,6 +531,7 @@ def main():
     build(False)
     if not a.slim_only:
         build(True)
+        stage_for_teams()
     print("\n完成 →", DIST)
 
 
