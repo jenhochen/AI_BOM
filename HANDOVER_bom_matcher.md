@@ -5,40 +5,40 @@ Stanley（ADATA Technology）開發的 Python Windows 工具，讀取 Altium 格
 
 ---
 
-## 目前版本：v0.07
+## 目前版本：v0.10
 
 v0.07 起拆成「一個核心 + 兩套前端」。v0.06 的 tkinter GUI 已由 C / D 兩案取代。
 
 | 檔案 | 角色 | 行數 |
 |---|---|---|
 | `bom_core_0.07.py` | 核心邏輯（解析／比對／Knowledge／Excel 輸出）＋ CLI | ~700 |
-| `bom_matcher_C_0.07.py` | **C 案**：Streamlit 網頁版 | ~330 |
-| `bom_matcher_D_0.07.py` | **D 案**：pywebview 原生視窗版（HTML 內嵌） | ~640 |
-| `run_C_streamlit.bat` | C 案啟動捷徑（port 8601） | — |
-| `run_D_webview.bat` | D 案啟動捷徑 | — |
-| `.streamlit\config.toml` | C 案主題（primaryColor `#4F46E5`） | — |
+| `bom_matcher_C_0.07.py` | **S 案**：Streamlit 網頁版 | ~330 |
+| `bom_matcher_D_0.07.py` | **W 案**：pywebview 原生視窗版（HTML 內嵌） | ~640 |
+| `run_S_streamlit.bat` | S 案啟動捷徑（port 8601） | — |
+| `run_W_webview.bat` | W 案啟動捷徑 | — |
+| `.streamlit\config.toml` | S 案主題（primaryColor `#4F46E5`） | — |
 
 **版本規則：** 每次進版 +0.01，程式檔名含版號。
 
 ### 執行方式
 ```
-雙擊 run_C_streamlit.bat        # C 案：瀏覽器 http://localhost:8601
-雙擊 run_D_webview.bat          # D 案：原生視窗
+雙擊 run_S_streamlit.bat        # S 案：瀏覽器 http://localhost:8601
+雙擊 run_W_webview.bat          # W 案：原生視窗
 
 python bom_core_0.07.py                    # CLI 全自動
 python bom_core_0.07.py -o out.xlsx
 python bom_core_0.07.py BOM.txt db.xlsx -k Knowledge.xlsx -p pcb.jpg
 python bom_core_0.07.py --no-split         # 關閉替代料拆列
 
-python bom_matcher_D_0.07.py --dump-html   # 輸出 D 案 UI 的 HTML
+python bom_matcher_D_0.07.py --dump-html   # 輸出 W 案 UI 的 HTML
 python bom_matcher_D_0.07.py --selftest    # 自動跑完流程後關閉（驗證用）
 ```
 
 ### 依賴套件
 ```
 pip install pandas openpyxl pillow                # 核心
-pip install streamlit streamlit-option-menu       # C 案
-pip install pywebview                             # D 案
+pip install streamlit streamlit-option-menu       # S 案
+pip install pywebview                             # W 案
 ```
 實測環境：Python 3.14.4 / pandas 3.0.3 / openpyxl 3.1.5 / streamlit 1.62.0 / pywebview 6.2.1
 
@@ -178,12 +178,12 @@ v0.07 起 **逐列比對**（每個拆出來的 P/N 各自比對自己的描述�
 
 ## 兩案的坑（實作時踩過，別再踩）
 
-### C 案 Streamlit
+### S 案 Streamlit
 - **`st.data_editor` 不套用 pandas Styler 底色** → 「可編輯」與「三色底」無法並存。目前分兩個頁籤：`✎ 編輯`（emoji 狀態欄）／`🎨 色底檢視`（唯讀 Styler）。要兩者兼得得換 `streamlit-aggrid`。
 - **`st.data_editor` 把 `None` / `pd.NA` / `Int64` 空值渲染成字串 `"None"`** → Item / Qty 兩欄改用字串表示，存回時再轉 int。
 - 版面只能單欄由上而下，沒有原生檔案選擇器（用下拉選單＋手動輸入路徑替代）。
 
-### D 案 pywebview
+### W 案 pywebview
 - **不能把 window 物件掛成 `self.window`** → pywebview 會遞迴序列化 js_api 的公開屬性，走進 `window.native.AccessibilityObject.Bounds.Empty...` 造成 `maximum recursion depth exceeded`，視窗當場關閉。window 一律放模組層變數 `WIN`。
 - **`window.pywebview` 是載入後才注入的**，腳本執行當下判定必為 undefined。要用即時檢查 `LIVE()`，別在載入時就決定「預覽模式」。
 - 表格儲存格裡放 `<input>` 時，色點要包一層 flex，否則 input 是 block 會把色點擠到上一行。
@@ -210,6 +210,469 @@ v0.07 起 **逐列比對**（每個拆出來的 P/N 各自比對自己的描述�
 
 ---
 
+## v0.10 已完成（2026-10-21）
+
+待辦 T1–T5 全部做完，詳情見 `changelog_BOM_matcher_v0.10.txt`。重點：
+
+| 項目 | 結果 |
+|---|---|
+| T1　Location 加 (T)/(B) | `tag_side()` 冪等，手打過前綴不會疊成 `(T)(T)` |
+| T2　R8 電容降壓選料 | SM8008 命中 45 → **55**；Total Qty 384 **不變** |
+| T3　用語統一 | 位號→Location、面別→Top/Bot、chip→篩選鈕，三版掃過 |
+| T4　Top/Bot 同圖提示 | 不再靜默照貼；檔名規則只用於自動偵測 |
+| T5　SOP 標註式版面 | 31 頁，PPTX + HTML，`issues:[] deadLinks:0` |
+| 同名檔覆蓋確認 | core 警告 + C 勾選框 + D confirm |
+| 回歸 | 三份 BOM **零退步**，Total Qty 全部相同 |
+
+### R8 為什麼只放寬電容耐壓
+
+耐壓不足會縮短壽命但電路仍會動，看得到、可人工判斷。誤差與電流不符
+是功能性錯誤 —— 放寬等於讓程式替工程師做決定，所以 R6 的這兩條不動。
+
+### Streamlit 的 widget 值不是刪 session_state 就能重置
+
+v0.09 以為 `st.session_state.pop('sel_xxx')` 就能讓 `index` 重新生效，
+v0.10 實測發現**不夠**：widget 值綁在「widget 身分」上，同一個 key
+再建出來還是沿用舊值（目錄瀏覽器選了 pcb.jpg，下拉選單仍停在
+「手動輸入路徑」）。正解是在 key 後面接一個 `gen_xxx` 計數器，
+選檔時 +1，讓它變成新的 widget。
+
+另外，選完檔案**不可以**直接寫 `st.session_state['sel_xxx']` ——
+那個 selectbox 在同一次 run 裡早就建好了，會噴
+`StreamlitAPIException: cannot be modified after the widget ... is instantiated`。
+要先存 `pend_xxx` 再 `st.rerun()`，在 selectbox 建立之前套用。
+
+### v0.10 追加（2026-10-21 下午）
+
+| 項目 | 結果 |
+|---|---|
+| Location 前綴上畫面 | C/D 表格的 Location-Top / Bot 也帶 (T)/(B)（Q1，已確認保留）|
+| 藏掉 Deploy | `.streamlit\config.toml` `toolbarMode = "viewer"`（Q3）|
+| ADATA LOGO | 比照 Firmware Tool，C/D 左上角換成 `adata.png`（蜂鳥）；找不到檔案時回退成「B」徽章 |
+| 彩蛋 | 按住 **Shift** 連點三次 LOGO → 小蜜蜂遊戲。沒有開關、介面上沒有任何提示（比照 Firmware Tool）|
+| SOP 對照檢查 | C/D 介面逐項比對 SOP，補齊／改正十幾處；S 案截圖全部重拍，新增兩頁 → 33 頁 |
+| HTML 版 SOP 截圖全空白 | `preview.py` 修正（見下）|
+
+### 彩蛋（小蜜蜂）的結構
+
+- 遊戲本體與 LOGO 讀取都在 `bom_core` 第 14b 節：`BEE_GAME_JS`（定義
+  `window.bmBeeGame(canvas, onExit)`，回傳 `stop()`）、`app_logo_uri()`、
+  `EGG_CLICKS = 3`、`EGG_WINDOW_MS = 3000`。C/D 兩案共用同一份。
+- W 案：`page_html()` 把 HTML 裡的 `__LOGO_TAG__` / `__VER__` /
+  `/*__BEE_GAME__*/` 等佔位字串換掉，遊戲視窗是 `#egg` 覆蓋層。
+- S 案：用 **Custom Components v2**（`st.components.v2.component('bm_brand')`）
+  畫品牌區。連點計數全在瀏覽器端，不回 Python；遊戲覆蓋層掛在
+  `document.body`，不受側邊欄版面與 Shadow DOM 樣式限制。
+  ⚠️ 不要改用 `st.components.v1.html` —— v1 已棄用，而且是 iframe，
+  覆蓋層蓋不到整個頁面。
+- ⚠️ 照抄 Firmware Tool 的兩個坑：**監聽 pointerdown 不是 click**
+  （`<img>` 原生拖曳會吃掉 click）、圖片 `draggable=false`。
+  遊戲視窗一定要有 ✕，Esc 也要能關；關閉時呼叫 `stop()` 收掉
+  requestAnimationFrame 與鍵盤監聽，否則方向鍵會繼續被吃。
+
+### HTML 版 SOP 的截圖一直是空白的
+
+`build.js` 在每張截圖上疊一個「白色、透明度 100%」的矩形當外框。
+`preview.py` 的 `fill_css()` 只取顏色、沒取透明度 → 變成實心白塊，
+**把底下的截圖整張蓋掉**。QA 的 `imgFail` 只檢查圖片有沒有載入，
+所以一直回報 0，沒人發現。已改成讀 `a:alpha`，透明度 100% 就不輸出底色。
+
+教訓：版面 QA 通過 ≠ 看得到。HTML 版至少要實際截一頁有截圖的來看。
+
+### 截圖怎麼重拍（不必開真的視窗）
+
+- **W 案**：載入 `bom_matcher_W_0.10.py`，用 `Api().run_match()` 拿實際狀態，
+  `page_html()` 加一段假的 `window.pywebview.api`（回傳同一份 state），
+  用 headless Chrome 截圖。舊截圖含 31px 的 Windows 標題列，
+  SOP 的 marks 座標是照那個算的 —— 重拍時把舊圖的標題列貼回去，marks 就不用改。
+- **S 案**：`streamlit run` 起一個實例，用 Chrome DevTools Protocol 點按鈕後截圖。
+  寬度用 1440（1280 時「瀏覽…」按鈕會折成兩行），SOP 的 `ar` 改成 `1440 / 942`。
+- ⚠️ 用 Chrome，不要用 Edge headless —— Edge 會在畫面右緣疊一個浮動圖示，
+  不在 DOM 裡，CSS 藏不掉。
+
+---
+
+## v0.09 已完成（2026-10-19）
+
+上一版的待辦全部做完，詳情見 `changelog_BOM_matcher_v0.09.txt`。重點：
+
+| 項目 | 結果 |
+|---|---|
+| 比對規則 R1–R7 | SM8008 命中 26 → **45**；三份 BOM 回歸**零退步** |
+| 單面板相容 | 與 v0.08 逐格比對 **0 差異**（合併數同為 107） |
+| NC(...) 剝除 | SM8008 的 nc 由 0 → **26** |
+| 雙面板 | F/G 兩欄、位號對照表、三層警告、圖片切兩半 |
+
+### 比對的三條鐵則（之後改比對邏輯前先看這個）
+
+1. **不要用整串 Part 去 Description 找子字串。** 格式一變就全找不到，
+   而且是靜默失敗。要先 `parse_part()` 拆成屬性再比。
+2. **比對順序是「屬性式 → 子字串」，不可對調。** 子字串是 v0.08 的舊路徑，
+   留著當退路，保證舊 BOM 不退步。改動時務必跑回歸（見下）。
+3. **未命中一定要歸因（R7）。** 靜默留白是 v0.08 最大的問題 ——
+   32 項電容全軍覆沒卻沒人發現。
+
+### R6 方向性條件容易誤判為 bug
+
+耐壓／電流 **DB ≥ BOM**、誤差 **DB ≤ BOM**。所以會出現
+「DB 明明有這個值卻沒命中」的情況，那多半是**正確的**：
+
+- `NC(100R_1%)` 不採用 `61031353`（5% 誤差超過要求的 1%）
+- `FB/120R/55mR/2A` 不採用 120Ω BEAD（DB 只有 1.2~1.4A，不足 2A）
+
+診斷會把這類歸到「規格不符（耐壓/電流/誤差）」，與「DB 沒有這個值」分開。
+
+### 回歸測試（改比對邏輯後必跑）
+
+```bash
+python tools/regress.py        # v0.08 vs v0.09，三份 BOM，任一退步就算失敗
+```
+
+判定標準：**命中數只能增不能減，Total Qty 必須完全相同。**
+
+---
+
+## 雙面板
+
+| 項目 | 說明 |
+|---|---|
+| 觸發條件 | 有載入位號對照表就是雙面板；沒有就退回單面板，輸出與 v0.08 相同 |
+| 對照表格式 | **第一欄＝位號、第二欄＝面別**。xlsx 為主、txt 為輔 |
+| 不可用表頭名判斷 | 實際檔案 TXT 是 `T/B`、XLSX 是 `T_B`，兩者不一致 |
+| 面別寫法 | TOP/T/TOP SIDE/F/FRONT、BOT/B/BOTTOM/BACK 都接受 |
+| 放哪裡 | 程式目錄或 `ExcelDB\`（`find_side_tables` 掃這兩處） |
+| PCB 圖片 | 檔名含 top / bot 才會切兩半，例 `pcb_top.jpg` / `pcb_bot.jpg`；只有一張就不切 |
+| 位號對不上 | 日誌＋Excel 淡紅底＋紅字；反向檢查也提示 |
+
+⚠️ **對照表與 BOM 必須是同一個改版。** SM8008 實測兩份差了 6+4 個位號，
+這通常代表版本不同步，不是單純「少幾個位號」。
+
+---
+
+## 交付規格（v0.08 起，每次更新都做）
+
+> **★ 2026-10-21 起：每次產出新版本，一定要連 `dist\` 底下的
+> 「完整離線安裝版」與「精簡版」一起重建。**
+> 只更新 .py 不重建交付包，使用者拿到的還是舊版 —— 他們是從
+> `dist\` 解壓縮來用的，不是跑你專案目錄裡的檔案。
+> 指令：`python tools/build_dist.py`
+
+規格對齊 `F:\AI_ini_allin1` 的 ADATA SSD Firmware Tool。
+
+| 交付包 | 大小 | 內容 | 用在哪 |
+|---|---|---|---|
+| `dist\BOM_Matcher_v<VER>_完整離線安裝版` | ~113 MB | 精簡版 ＋ `python\`（Python 安裝檔）＋ `wheels\`（47 個離線套件） | 產線機器、連不上外網 |
+| `dist\BOM_Matcher_v<VER>_精簡版` | ~0.6 MB | 程式 ＋ 範例資料 ＋ SOP | 辦公室機器，安裝時上網抓套件 |
+
+兩包都含 `安裝.bat`、`安裝說明.txt`、`docs\*_操作SOP.pptx`。
+程式本體與範例資料完全相同，差別只在「套件怎麼來」。
+
+```bash
+python tools/build_dist.py                   # 產出兩包
+python tools/build_dist.py --refresh-wheels  # 先重抓 wheels 再打包
+python tools/build_dist.py --slim-only       # 只要精簡版
+```
+
+⚠️ `proxy_tools`（pywebview 的相依）**只有 sdist 沒有 wheel**，所以
+`pip download` 不能加 `--only-binary=:all:`，而且 wheels 裡必須一併放
+`setuptools` 與 `wheel`，否則目標機器離線時建不起來。
+
+---
+
+## 操作 SOP
+
+產出物：`docs\BOM_Matcher_v<VER>_操作SOP.pptx`（24 頁）
+
+| 檔案 | 作用 |
+|---|---|
+| `docs/sop/content.js` | **全部文字內容**。要改字只動這一支 |
+| `docs/sop/layout.js` | 投影片尺寸與邊界常數 |
+| `docs/sop/build.js` | 產出 .pptx（pptxgenjs） |
+| `docs/sop/preview.py` | **從產出的 .pptx 反向解析實際座標**畫成 preview.html |
+| `docs/sop/shots/` | 9 張實機截圖（W 案用 PrintWindow 擷取視窗，非螢幕截圖） |
+
+```bash
+cd docs/sop && npm install pptxgenjs     # 第一次
+node build.js
+node <pptx-skill>/scripts/apply_theme.js ../BOM_Matcher_v0.08_操作SOP.pptx theme.tmp.json
+python preview.py                        # 再用瀏覽器開 preview.html
+```
+
+`preview.py` 刻意**不是**重畫一份版面 —— 重畫的預覽只能證明「我以為的座標」
+沒爆框，證明不了 pptx 裡真正的座標。它直接讀 pptx 的 EMU 座標畫成 HTML，
+載入後的 JS 會自動掃描「超出投影片邊界」與「文字爆框」並標紅。
+
+這台機器沒有 LibreOffice，所以不能用 pptx skill 文件裡的
+`soffice --convert-to pdf` + `pdftoppm` 做視覺 QA，preview.html 是替代方案。
+
+---
+
+### SOP 版面固定規格（2026-10-21 指定，不要再改掉）
+
+| 位置 | 內容 |
+|---|---|
+| 頁尾 | **只有「☰ 目錄」，置中**。版號、日期、頁碼都不要 |
+| 截圖頁 | 方案 A 編號標記法：截圖上疊紅色編號圓點，右側說明用 ①②③ 同號對應 |
+
+`build.js` 的 CONTENT 版面 `objects: []`、沒有 `slideNumber`；
+「☰ 目錄」在 `title()` 裡用 `x: L.M, w: L.W - L.M*2, align:'center'`
+畫在**投影片**上（不能放版面，pptxgenjs 在 slideLayout 寫不出
+`hlinkClick` 的關聯，會變成 `rIdundefined`）。
+
+⚠️ 這條曾經被弄丟過一次：Stanley 要求「刪掉版號與日期、目錄置中」之後，
+下一輪又說「排版改回上一個方案 A」，我把頁尾一起還原了 ——
+但「改回排版」指的只是截圖與說明的配置，頁尾那兩項是獨立要求、沒有被收回。
+以後收到「改回上一版」時，要先確認**範圍到哪裡**，不要擴大解釋。
+
+### 兩個對話的合併（2026-10-21）
+
+`F:\AI_BOM` 一度有兩個對話同時在改：
+
+| 對話 | 內容 |
+|---|---|
+| **BOM matcher**（主線，08-11 起） | v0.01→v0.10 全部歷史與規則，git 分支由這邊管 |
+| Location tags v0.10 進行中工作（10-21 開） | v0.10 的 Location 前綴上畫面、Deploy 關閉、LOGO／彩蛋、SOP 對照介面重做 |
+
+後者的 21 個檔已驗過並合進 commit `84f5263`，知識寫進上面的
+「v0.10 追加」一節。**之後只用主線那個對話**，另一個封存。
+
+教訓：同一個資料夾不要開兩個對話同時改，誰先存檔誰就蓋掉對方。
+
+---
+
+## 待辦（下一版，等 Stanley 指定版號才動工）
+
+v0.10 的 T1–T5 全部完成，目前沒有待辦。
+
+### 待決定項目
+
+| # | 項目 | 提出日 | 狀態 |
+|---|---|---|---|
+| Q1 | C/D 介面 Location 欄也顯示 (T)/(B) | 2026-10-21 | **Stanley 確認保留**（2026-10-21）|
+| Q2 | 真正的 TOP / BOT 兩張 PCB 圖 | 2026-10-21 | 等提供檔案 |
+| Q4 | 設定按鈕（語系／字體大小／縮放比例）| 2026-10-22 | **先不做**，等指示 |
+| Q5 | W 案右側明細面板要不要留 | 2026-10-22 | **已決定：甲案，拿掉**（2026-10-22）|
+| Q3 | Streamlit 右上角 Deploy 與 ⋮ 選單 | 2026-10-21 | **已處理**（toolbarMode = viewer，SOP 已補說明）|
+
+**Q1　Location 欄顯示前綴 —— 已確認保留**
+S 案 `_rows_to_df()`、W 案 `_rows_js()` 都套上 `core.tag_side()`，
+畫面與輸出 Excel 一致。改過的值寫回 `ref_top` / `ref_bot` 會帶著前綴，
+寫 Excel 時 `tag_side()` 冪等，不會疊成 `(T)(T)`。
+
+修改前後對照（SM8008 實際資料）：
+`screenshot\v0.10_D_Location前綴_修改前後.png`、
+`screenshot\v0.10_C_Location前綴_修改前後.png`
+
+★ 代價：每個 Location 多 3 個字元，欄寬不變的話一格看得到的會變少
+（例：Item 3 的 Location-Top 完整看得到的從約 7 個變 4 個）。
+Stanley 看過預覽圖後決定保留。要改回只要拿掉那兩處 `core.tag_side()`。
+
+**Q2　TOP / BOT 兩張 PCB 圖 —— 等檔案**
+目前 TOP / BOT 都指到同一張 `pcb.jpg`，雙面板圖片區上下兩半是同一張圖
+（程式會提醒「Top 與 Bot 指到同一張圖片」）。
+拿到後放進 `screenshot\`，檔名含 top / bot（例 `pcb_top.jpg` / `pcb_bot.jpg`）
+就會自動配對；之後要重拍 SOP 雙面板相關截圖並重建交付包。
+
+**Q3　Streamlit 右上角 Deploy 與 ⋮ 選單 —— 已處理**
+`.streamlit\config.toml` 加了 `[client] toolbarMode = "viewer"`，
+把 Deploy 按鈕與開發者選項（Rerun / Clear cache）藏起來。
+Deploy 是把程式發佈到 Streamlit 雲端，對內部工具沒有用途，
+而且有外流原始碼與資料的風險。
+實測 Streamlit 1.62：⋮ 選單只剩 **Print** 與 **Record screen**，
+SOP 第 14 頁「右上角的選單（三個點）」照這兩項寫。
+
+★ 這個設定只有在交付包裡的 `.streamlit\config.toml` 一起帶出去才有效 ——
+打包時務必確認這個資料夾有進去（PowerShell 壓縮常漏掉 dot 開頭資料夾，
+見交付前檢查清單第 7 項）。
+
+---
+
+## 用語規範（2026-10-20 起，Stanley 指定）
+
+**只准用輸出檔裡已經存在的欄位名稱，不要另外發明中文名詞。**
+
+| 要講的東西 | ✅ 用這個 | ❌ 不要用 |
+|---|---|---|
+| P/N 欄位的值（料件編號） | **料號** 或 `P/N` | 零件號、品號 |
+| `R48` `U13` 這種標示（Location 欄的值） | **Location** | 位號、參考編號、reference designator |
+| 正反面 | **Top / Bot**，或欄名全寫 `Location-Top Layer` / `Location-Bottom Layer` | 面別、面號、正反面別 |
+
+適用範圍：對話回覆、程式內的訊息與警告文字、Excel 欄位與圖例、SOP、changelog，全部一致。
+
+例：
+- ❌ `⚠ 4 個位號查不到面別：R48,R54,R298,R299`
+- ✅ `⚠ 4 個 Location 查不到 Top/Bot：R48,R54,R298,R299`
+
+---
+
+## ★ 三個版本必須同步（2026-10-20 起強制）
+
+> **任何需求、修正、用語改動，一律同時套用到三個版本，並三個都實測過才算完成。**
+
+| 版本 | 檔案 | 怎麼算過關 |
+|---|---|---|
+| CLI | `run_CLI.bat` → `bom_core_0.XX.py` 的 `main()` | 真實 cmd 跑完，訊息與產出都正確 |
+| Streamlit（S 案） | `bom_matcher_C_0.XX.py` | 真實瀏覽器操作過該功能 |
+| pywebview（W 案） | `bom_matcher_D_0.XX.py` | 視窗開起來截圖，或 `--selftest` 跑完並貼結果 |
+
+共用邏輯一律放 `bom_core`，前端只做 UI；但**前端的文字、欄位、提示也要一起改**，
+不能只改 core 就宣稱三版都好了。回報時三個版本的執行結果分開貼。
+
+---
+
+### 程式進版必須同步更新 SOP（2026-10-20 起強制）
+
+版號一動，SOP 就要跟著走完這條流程，**不可以只改程式不改 SOP**：
+
+1. 重新截圖：介面有變的頁面重拍，放進 `docs\sop\shots\`
+2. 改文字：只動 `docs\sop\content.js`（`VER` / `DATE` 也要改）
+3. 重建：`node docs/sop/build.js` → 產出 `docs\BOM_Matcher_vX.XX_操作SOP.pptx`
+4. 驗證：pptx validator 必須 All validations PASSED
+5. 交付包只放 **PPTX**，目錄超連結要能跳
+
+### ★ 交付後要同步到 Teams（2026-10-28 起）
+
+每次產出新版本，除了 `dist\`，還要把檔案放上 Teams：
+
+```
+OBM/SBM HW RD  ›  03_AI Tool.蜂鳥助手  ›  已共用
+```
+
+要放的兩個檔：
+
+| 檔案 | 來源 |
+|---|---|
+| `BOM_Matcher_vX.XX_完整離線安裝版.zip` | `dist\` |
+| `BOM_Matcher_vX.XX_操作SOP.pptx` | `docs\` |
+
+`tools\build_dist.py` 跑完會把這兩個檔複製到 `dist\_上傳Teams\`，直接整個資料夾拖進瀏覽器就好。
+
+⚠️ **目前只能手動拖曳。** 那個文件庫沒有同步到本機（OneDrive 沒在跑、
+沒有任何同步資料夾），所以程式碰不到它。
+
+要讓這一步自動化，在 Teams 的「已共用」頁面按**「新增 OneDrive 捷徑」**
+（或「同步」），資料夾會出現在
+`C:\Users\<user>\ADATA Technology Co., Ltd\...` 之類的路徑下，
+之後 `build_dist.py` 就能直接複製過去。做好之後把路徑寫進這一節。
+
+---
+
+### 操作 SOP 影片（2026-10-27 起）
+
+`python tools\sop_video.py` → `docs\BOM_Matcher_vX.XX_操作SOP.mp4`
+（H.265 / hvc1、1920x1080、30fps）＋ 同名 `.srt`。
+
+| 環節 | 作法 |
+|---|---|
+| 投影片轉圖 | `preview.py` 反解正式 pptx → CDP 逐張 `captureScreenshot` 加 clip |
+| 版面檢查 | 讀 `window.__report`，**有爆框就中止**（`--ignore-layout` 可強制） |
+| 旁白 | Windows SAPI 的 zh-TW 語音，**逐句**合成，字幕時間軸才對得準 |
+| 字幕 | 燒進畫面（微軟正黑體）＋ 另掛一軌 `mov_text`＋ 旁邊一份 `.srt` |
+| 版面 | 投影片 1920x960 在上，下方 120px 深色帶放字幕，**不蓋住內容** |
+| ffmpeg | `imageio-ffmpeg` 自帶（含 libx265），不必裝系統程式 |
+
+⚠️ **`preview.py` 是「近似重畫」，不是 pptx 本身。**
+它用 python-pptx 讀座標再用 HTML 畫，pptx 的細節要一項一項補。
+已經為此修過三次：挑錯版本的 deck、沒讀透明度（截圖整張被白塊蓋掉）、
+沒讀段落對齊（置中失效）、沒讀垂直置中（編號數字飄到圓點外）。
+**每次產影片都要實際抽幀看過畫面**，不能只看它有沒有跑完。
+
+⚠️ `--reuse-tts` 只有在句數完全相同時才安全。改過 content.js 的文字就要重新合成，
+否則聲音會和字幕錯開（腳本已加防呆：多出來的音檔存在就不沿用）。
+
+交付包**不放影片** —— 精簡版本來 1.6MB，放進去會變 18MB。影片單獨給。
+
+---
+
+### ★ HTML 版 SOP 已停止維護（2026-10-21 起）
+
+`docs\sop\preview.py` 留在版控裡當參考，但**不再執行、不再進交付包**。
+現有的 `BOM_Matcher_v0.10_操作SOP.html` 已經搬到 `old\`。
+
+原因：同一份內容維護兩種格式，等於每次都要驗兩次版面。
+而且 HTML 版是用 python-pptx 反解 pptx 再重畫的，pptx 的細節
+（形狀填色、透明度、段落對齊…）要一項一項補 —— 已經為此修過三次 bug
+（挑錯版本的 deck、沒讀透明度導致截圖全白、沒讀段落對齊導致置中失效）。
+PPTX 本身就能看、能投影、能列印，不值得為第二種格式付這個成本。
+
+SOP 的截圖以 **W 案（pywebview）** 為主，S 案只放差異頁。
+所有截圖頁都要有編號標記（方案 A），`build.js` 會在建置時檢查
+「標記數 == 說明條目數」，不相等直接中斷。
+
+---
+
+### ★ 程式目錄只留最新版（2026-10-21 起）
+
+根目錄與 `docs\` 只保留**目前版本**的檔案，其餘全部搬到 `old\`：
+
+```
+根目錄   bom_core_0.10.py  bom_matcher_S_0.10.py  bom_matcher_W_0.10.py
+         changelog_BOM_matcher_v0.10.txt  HANDOVER_bom_matcher.md
+         requirements.txt  五個 .bat  pcb.jpg  adata.png
+docs\    BOM_Matcher_v0.10_操作SOP.pptx
+```
+
+搬動後記得檢查有沒有程式還指著舊路徑 ——
+`tools
+egress.py` 會載入前一版的 core 做回歸，路徑要跟著改成 `old/`。
+
+---
+
+### ★ SOP 必須和目前的程式一致（2026-10-21 起）
+
+**原則：只要是確定且修改完成的，就同步改 SOP。**
+SOP 不是「改版時才整理」的文件，它隨時都要能當作程式的現況描述 ——
+任何時候打開 SOP，上面寫的、畫的都要跟實際跑出來的一樣。
+
+判斷標準很簡單：**SOP 上的敘述或截圖只要和實際不符，就是該改了。**
+不必等到版號變動，也不分大改小改。
+
+常見的算：
+- 按鈕／面板搬位置（例：日誌從右欄搬到下方）
+- 新增互動（例：滑過 Location 欄跳氣泡、點列放大）
+- 改名（例：C 案 → S 案）
+- 新增設定項（例：字體大小／縮放比例）
+
+流程照「程式進版必須同步更新 SOP」那一節：
+重拍截圖 → 改 content.js → build.js → validator → 重建交付包。
+`build.js` 會檢查 marks 數 == bullets 數，漏掉會直接中斷。
+
+---
+
+### ★ 給方案選擇時一定要附預覽圖（2026-10-21 起）
+
+只要是「要你選 a / b / c」或「甲案 / 乙案」這種，**不可以只用文字描述**，
+一定要先做出預覽圖讓 Stanley 看到長什麼樣子再決定。
+
+適用範圍：介面版面、SOP 版面、輸出檔格式、互動方式 —— 只要看得見的都算。
+
+做法（不需要動到正式程式）：
+1. 用 HTML 模擬各方案的畫面，放在暫存目錄
+2. `python -m http.server <port>` 起一個本機伺服器
+3. headless Chrome 截圖：
+   `chrome.exe --headless=new --window-size=W,H --screenshot=out.png http://127.0.0.1:<port>/x.html`
+4. 存到 `screenshot\`，檔名帶版號與用途
+
+W 案的真實截圖用 `tools\shots_S.py` 的 CDP 作法；
+S 案（Streamlit）一定要用 CDP，因為畫面要互動才出得來。
+
+---
+
+### ★ 檔案被佔用時要停下來問（2026-10-21 起）
+
+重建 SOP 或交付包時如果遇到 `EBUSY` / `Permission denied`
+（多半是 OnlyOffice / PowerPoint / Excel 開著），**不要自己想辦法繞過，
+也不要刪掉 `.~lock` 檔**：停下來問 Stanley。
+**流程是：他關檔 → 我存檔。** 不要自己覆蓋。
+
+理由：那是他正在看的檔案，直接覆蓋等於把他眼前的內容換掉；
+刪 lock 檔更糟 —— 他一存檔就把剛建好的覆蓋回去。
+
+`docs\sop\build.js` 有 `SOP_OUT` 環境變數，可以先建到別的路徑驗證版面，
+等他關檔再寫正式檔。
+
+---
+
 ## 工作慣例
 
 - 程式碼不主動產出，等 Stanley 明確說「請產出程式」才產出
@@ -230,8 +693,8 @@ v0.07 起 **逐列比對**（每個拆出來的 P/N 各自比對自己的描述�
 | # | 項目 | 怎麼算過關 |
 |---|---|---|
 | 1 | `run_CLI.bat` | 用**真實 cmd** 執行（不是 PowerShell 管線），中文與 ✓ 不亂碼、`pause` 有停住、產出 xlsx |
-| 2 | `run_C_streamlit.bat` | 真實 cmd 啟動 → 8601 埠 LISTENING → **真實瀏覽器**開得起來 → 跑完偵測/比對/編輯/產出 |
-| 3 | `run_D_webview.bat` | 視窗真的開起來並截圖；或用 `--selftest` 驅動整條流程並貼出結果 |
+| 2 | `run_S_streamlit.bat` | 真實 cmd 啟動 → 8601 埠 LISTENING → **真實瀏覽器**開得起來 → 跑完偵測/比對/編輯/產出 |
+| 3 | `run_W_webview.bat` | 視窗真的開起來並截圖；或用 `--selftest` 驅動整條流程並貼出結果 |
 | 4 | `install_requirements.bat` | 真實 cmd 執行到最後的檢查區塊 |
 | 5 | 每個 .bat 的位元組 | `CRLF > 0`、`lone-LF == 0`、`全部 ASCII` |
 | 6 | 壓縮包 | **解壓到全新路徑**再跑一次 1～4（驗證「工作目錄＝程式所在目錄」） |
@@ -247,11 +710,11 @@ v0.07 起 **逐列比對**（每個拆出來的 P/N 各自比對自己的描述�
 ```
 F:\AI_BOM\
   bom_core_0.07.py                 核心 + CLI
-  bom_matcher_C_0.07.py            C 案 Streamlit
-  bom_matcher_D_0.07.py            D 案 pywebview
-  run_C_streamlit.bat              C 案捷徑
-  run_D_webview.bat                D 案捷徑
-  .streamlit\config.toml           C 案主題
+  bom_matcher_C_0.07.py            S 案 Streamlit
+  bom_matcher_D_0.07.py            W 案 pywebview
+  run_S_streamlit.bat              S 案捷徑
+  run_W_webview.bat                W 案捷徑
+  .streamlit\config.toml           S 案主題
   changelog_BOM_matcher_v0.07.txt  完整版本歷史（v0.01–v0.07）
   HANDOVER_bom_matcher.md          本文件
   bom_matcher_0.06.py              上一版（tkinter，保留備援）

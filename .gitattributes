@@ -1,0 +1,17 @@
+# .bat 一定要 CRLF —— cmd.exe 是用「位元組位移」讀批次檔的，
+# 只有 LF 會讓它從某一行的中間開始執行（v0.07 首次交付五個 .bat 全掛就是這個原因）。
+*.bat text eol=crlf
+
+# 其餘文字檔統一以 LF 入庫
+*.py   text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+
+# 二進位，不要做任何換行轉換
+*.xlsx binary
+*.png  binary
+*.jpg  binary
+*.pptx binary
+*.zip  binary
