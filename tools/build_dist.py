@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-tools/build_dist.py  —  產出 BOM Matcher 的兩種交付包
+tools/build_dist.py  —  產出 BOM Matcher 的三種交付包（v0.11 起多 W免安裝版）
 
     dist/BOM_Matcher_v<VER>_完整離線安裝版/   + .zip   目標機器免上網
     dist/BOM_Matcher_v<VER>_精簡版/           + .zip   目標機器要上網
+    dist/BOM_Matcher_v<VER>_W免安裝版/        + .zip   只有 W 案 exe，免 Python（v0.11）
 
 規格對齊 F:\\AI_ini_allin1 的 ADATA SSD Firmware Tool：
   完整離線安裝版 = 精簡版 + python\\（Python 安裝檔）+ wheels\\（離線套件）
@@ -11,7 +12,7 @@ tools/build_dist.py  —  產出 BOM Matcher 的兩種交付包
 
 用法
 ----
-    python tools/build_dist.py              產出兩包（需要 dist/wheels_cache）
+    python tools/build_dist.py              產出三包（需要 dist/wheels_cache 與 pyinstaller）
     python tools/build_dist.py --slim-only  只產出精簡版
     python tools/build_dist.py --refresh-wheels
                                             重新下載 wheels_cache 再打包
@@ -30,7 +31,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-VER = "0.10"
+VER = "0.11"
 PY_VER = "3.14.4"
 PY_EXE = f"python-{PY_VER}-amd64.exe"
 PY_URL = f"https://www.python.org/ftp/python/{PY_VER}/{PY_EXE}"
@@ -38,6 +39,19 @@ PY_URL = f"https://www.python.org/ftp/python/{PY_VER}/{PY_EXE}"
 # 從 Firmware Tool 的離線包借用同一份 Python 安裝檔（兩個專案版本一致）
 FW_PY = Path(r"F:\AI_ini_allin1\dist"
              r"\ADATA_SSD_Firmware_Tool_v1.44_完整離線安裝版\python") / PY_EXE
+
+
+def find_py_installer() -> Path:
+    """v0.11：換了機器之後 F:\\AI_ini_allin1 不一定在。依序找：
+    Firmware Tool 離線包 → dist\\python_cache\\ → 本專案舊版離線包的 python\\。"""
+    cands = [FW_PY, Path(__file__).resolve().parent.parent / "dist" / "python_cache" / PY_EXE]
+    cands += sorted((Path(__file__).resolve().parent.parent / "dist")
+                    .glob(f"BOM_Matcher_v*_完整離線安裝版/python/{PY_EXE}"), reverse=True)
+    for c in cands:
+        if c.is_file():
+            return c
+    raise SystemExit("找不到 Python 安裝檔 " + PY_EXE + "，找過：\n  "
+                     + "\n  ".join(map(str, cands)) + "\n下載：" + PY_URL)
 
 DIST = ROOT / "dist"
 WHEELS_CACHE = DIST / "wheels_cache"
@@ -57,7 +71,19 @@ PROGRAM_FILES = [
     "adata.png",          # 品牌 LOGO（C/D 兩案的左上角）
 ]
 # 2026-10-21 起 HTML 版停止維護，交付包只給 PPTX。
-SOP = [f"BOM_Matcher_v{VER}_操作SOP.pptx"]
+def _latest_sop() -> list:
+    """2026-11-13 起 SOP 改成「進版時詢問」才更新，所以 SOP 的版號可能落後程式。
+    拿 docs\\ 裡版號最大的那一份，不要只找目前 VER 的檔名（找不到就靜默漏放）。"""
+    import re as _re
+    found = []
+    for f in (Path(__file__).resolve().parent.parent / "docs").glob("BOM_Matcher_v*_操作SOP.pptx"):
+        m = _re.search(r"_v(\d+)\.(\d+)_", f.name)
+        if m:
+            found.append(((int(m.group(1)), int(m.group(2))), f.name))
+    return [max(found)[1]] if found else []
+
+
+SOP = _latest_sop()
 SAMPLE = {
     "TXT": ["SM8008_M2_D4X2_4G178_C261C_V1C_20261012.BOM.txt",
             "S-M2P42280SMH086-20260812_1.BOM"],
@@ -360,20 +386,15 @@ Altium Text BOM + Excel 零件資料庫  →  ADATA E-BOM 格式 Excel
 
 ■ v{VER} 的重點
 
-  • Location-Top / Location-Bottom 兩欄的每個 Location 加上 (T) / (B)
-        (T)BC26,(T)C76,(T)C81        (B)BC28,(B)C55,(B)C56
-  • R8 電容降壓選料：容值與封裝一致、但 DB 耐壓低於原始設計時可以選，
-    Description 自動加註「(原始設計為10V, 請再確認)」，畫面標 🔴、Excel 標紫底。
-    SM8008 命中 45 → 55（+10 項電容），Total Qty 不變。
-    只放寬電容耐壓 —— 電流與誤差不放寬，那是功能性錯誤。
-  • C/D 畫面上的 Location 欄也帶 (T)/(B)，與輸出 Excel 一致
-  • 輸出路徑已經有同名檔時會先問，不會無聲蓋掉
-  • 左上角換成 ADATA LOGO；S 案右上角的 Deploy 按鈕已拿掉
-  • 用語統一：位號 → Location、面別 → Top/Bot、chip → 篩選鈕
-  • 操作 SOP 改成標註式版面：截圖上標 ①②③，右側說明同號對應
-  • 雙面板：給 Location 對照表就多一欄 Location-Bottom Layer；
-    PCB 圖片放兩張（檔名含 top / bot）會自動切成上下兩半
-  • Location 對不上時三層警告：日誌、Excel 淡紅底、紅字寫出是哪幾個
+  • W 案多一種交付方式：「W免安裝版」—— 單一 exe，不用裝 Python 或任何套件
+        BOM_Matcher_W_v{VER}.exe，解壓縮後雙擊即可（需要 Edge WebView2）
+        產出的 Excel 與 .py 版逐格比對 0 差異
+  • 修正 W 案開啟時檔案欄位全是「（未找到）」（v0.10 就有的問題，
+    當時按「▶ 執行比對」仍可運作，所以沒被發現）
+  • 比對邏輯沒有變動：三份 BOM 回歸零退步，SM8008 命中 55、Total Qty 384
+  • 操作 SOP 截圖全部重拍；W 案改用真實視窗擷取
+  • v0.10 的功能全部沿用：Location (T)/(B)、R8 電容降壓選料、雙面板 Top/Bot、
+    同名檔覆蓋確認、ADATA LOGO
 
   完整清單見 changelog_BOM_matcher_v{VER}.txt
 
@@ -463,9 +484,12 @@ def build(offline: bool) -> Path:
 
     if offline:
         (dst / "python").mkdir(exist_ok=True)
-        if not FW_PY.exists():
-            raise SystemExit(f"找不到 Python 安裝檔：{FW_PY}")
-        shutil.copy2(FW_PY, dst / "python" / PY_EXE)
+        src = find_py_installer()
+        cache = DIST / "python_cache" / PY_EXE      # 留一份，舊版包刪掉也還找得到
+        if src != cache and not cache.is_file():
+            cache.parent.mkdir(exist_ok=True)
+            shutil.copy2(src, cache)
+        shutil.copy2(src, dst / "python" / PY_EXE)
         if not WHEELS_CACHE.is_dir() or not any(WHEELS_CACHE.iterdir()):
             raise SystemExit("wheels_cache 是空的，先跑 --refresh-wheels")
         shutil.copytree(WHEELS_CACHE, dst / "wheels")
@@ -478,6 +502,88 @@ def build(offline: bool) -> Path:
             if p.is_file():
                 z.write(p, Path(name) / p.relative_to(dst))
 
+    n = sum(1 for p in dst.rglob("*") if p.is_file())
+    mb = zpath.stat().st_size / 1024 / 1024
+    print(f"  {name:<40} {n:>4} 檔   {mb:>7.1f} MB")
+    return zpath
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# v0.11：W 案免安裝版（單一 exe，使用者不用裝 Python 或任何套件）
+# ════════════════════════════════════════════════════════════════════════════
+
+EXE_NAME = f"BOM_Matcher_W_v{VER}.exe"
+
+
+def exe_readme() -> str:
+    return rf"""BOM Matcher  v{VER}  W 案免安裝版
+================================================================
+
+這一包不需要安裝 Python 或任何套件，直接雙擊 {EXE_NAME} 就能用。
+
+■ 使用方式
+  1. 整個資料夾解壓縮到任意位置（不要直接在 zip 裡面執行）
+  2. 雙擊 {EXE_NAME}
+     第一次啟動約 3～8 秒（程式要先自我解壓縮），之後就是正常的視窗
+  3. 操作方式與 W 案相同，見 docs\BOM_Matcher_v{VER}_操作SOP.pptx
+
+■ 資料夾結構（程式以 exe 所在的資料夾為工作目錄）
+      {EXE_NAME}     主程式
+      TXT\           Altium Text BOM
+      ExcelDB\       零件資料庫 + Knowledge + Location 對照表（*.xlsx）
+      screenshot\    PCB 圖片（jpg/png）
+      output\        產出的 E-BOM
+  附的範例資料可以直接按「▶ 執行比對」試跑。
+
+■ 需要的系統元件
+  Microsoft Edge WebView2 Runtime —— Windows 11 內建，Windows 10 多半已有。
+  雙擊後沒有視窗出現的話，到下列網址安裝 Evergreen Runtime：
+  https://developer.microsoft.com/microsoft-edge/webview2/
+
+■ 常見問題
+  ・防毒軟體跳出警告：單一 exe 會在啟動時解壓到暫存資料夾，部分防毒會誤判，
+    請 IT 將此 exe 加入白名單。
+  ・找不到檔案：確認 TXT\ ExcelDB\ 與 exe 放在同一層。
+  ・要用 S 案（瀏覽器版）或 CLI：改用「精簡版」或「完整離線安裝版」。
+"""
+
+
+def build_exe_pkg() -> Path | None:
+    exe = DIST / "exe" / EXE_NAME
+    if not exe.is_file():
+        print(f"  [略過] 找不到 {exe.name}，先跑 python tools/build_exe.py")
+        return None
+    name = f"BOM_Matcher_v{VER}_W免安裝版"
+    dst = DIST / name
+    if dst.exists():
+        shutil.rmtree(dst)
+    for sub in ("TXT", "ExcelDB", "output", "screenshot", "docs"):
+        (dst / sub).mkdir(parents=True, exist_ok=True)
+    shutil.copy2(exe, dst / EXE_NAME)
+    shutil.copy2(ROOT / "pcb.jpg", dst / "screenshot" / "pcb.jpg")
+    for s in SOP:
+        f = ROOT / "docs" / s
+        if f.exists():
+            shutil.copy2(f, dst / "docs" / s)
+    for sub, files in SAMPLE.items():
+        for f in files:
+            src = ROOT / sub / f
+            if src.exists():
+                shutil.copy2(src, dst / sub / f)
+    kn = ROOT / EXTRA_KNOWLEDGE
+    if kn.exists():
+        shutil.copy2(kn, dst / "ExcelDB" / EXTRA_KNOWLEDGE)
+    (dst / "output" / "_readme.txt").write_text(
+        "產出的 E-BOM 會放在這個資料夾。這個說明檔可以刪掉。\n", encoding="utf-8")
+    write_crlf(dst / "使用說明.txt", exe_readme())
+
+    zpath = DIST / f"{name}.zip"
+    if zpath.exists():
+        zpath.unlink()
+    with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+        for p in sorted(dst.rglob("*")):
+            if p.is_file():
+                z.write(p, Path(name) / p.relative_to(dst))
     n = sum(1 for p in dst.rglob("*") if p.is_file())
     mb = zpath.stat().st_size / 1024 / 1024
     print(f"  {name:<40} {n:>4} 檔   {mb:>7.1f} MB")
@@ -503,7 +609,8 @@ def stage_for_teams():
     out = DIST / "_上傳Teams"
     out.mkdir(exist_ok=True)
     want = [DIST / f"BOM_Matcher_v{VER}_完整離線安裝版.zip",
-            ROOT / "docs" / f"BOM_Matcher_v{VER}_操作SOP.pptx"]
+            DIST / f"BOM_Matcher_v{VER}_W免安裝版.zip"]      # v0.11
+    want += [ROOT / "docs" / s for s in SOP]        # 最新一份 SOP（版號可能落後程式）
     for f in out.iterdir():          # 清掉舊版，免得拖到過期的檔
         if f.is_file():
             f.unlink()
@@ -521,6 +628,8 @@ def main():
     ap = argparse.ArgumentParser(description=f"BOM Matcher v{VER} 交付包")
     ap.add_argument("--slim-only", action="store_true")
     ap.add_argument("--refresh-wheels", action="store_true")
+    ap.add_argument("--no-exe", action="store_true",
+                    help="不重建 W 案 exe（沿用 dist/exe 裡現有的）")
     a = ap.parse_args()
 
     DIST.mkdir(exist_ok=True)
@@ -531,6 +640,10 @@ def main():
     build(False)
     if not a.slim_only:
         build(True)
+        if not a.no_exe:     # v0.11：W 案單一 exe（PyInstaller）
+            subprocess.run([sys.executable, str(ROOT / "tools" / "build_exe.py")],
+                           check=True)
+        build_exe_pkg()
         stage_for_teams()
     print("\n完成 →", DIST)
 

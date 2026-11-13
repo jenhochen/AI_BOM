@@ -1,8 +1,8 @@
 // BOM Matcher 操作 SOP —— 全部文字內容。要改字只動這一支。
 // 與 F:\AI_ini_allin1\docs\sop 同樣的作法：content / build / preview 三分。
 
-const VER = '0.10';
-const DATE = '2026-10-21';
+const VER = '0.11';
+const DATE = '2026-11-13';
 
 const THEME = {
   name: 'BOM Matcher',
@@ -62,7 +62,7 @@ const SLIDES = [
             '色底需切到「色底檢視」頁籤',
             '使用期間不能關掉黑色主控台'] },
       { t: 'run_W_webview.bat', s: 'W 案．原生視窗',
-        b: ['雙擊即開，不需要瀏覽器',
+        b: ['雙擊即開；另有免裝 Python 的單一 exe',
             '表格佔滿整列，滑鼠氣泡看完整內容',
             '色底與編輯可以並存',
             '篩選鈕＋搜尋框，快速找到要確認的列'] },
@@ -71,18 +71,24 @@ const SLIDES = [
   // ── 二、安裝 ────────────────────────────────────────────────────────
   { kind: 'divider', section: '安裝', n: '02', title: '安裝' },
 
-  { kind: 'compare', section: '安裝', title: '兩種交付包怎麼選',
-    left: { t: '完整離線安裝版', s: '約 112 MB',
-            b: ['自帶 Python 安裝檔與全部套件',
-                '安裝過程完全不需要網路',
-                '產線機器、連不上外網的環境用這包',
-                '多了 python\\ 與 wheels\\ 兩個資料夾'] },
-    right: { t: '精簡版', s: '約 0.2 MB',
-             b: ['安裝時要連得上 python.org 與 PyPI',
-                 '檔案小，好傳',
-                 '辦公室機器用這包就夠',
-                 '裝不起來時再改用完整離線版'] },
-    note: '兩包的程式本體與範例資料完全相同，差別只在「套件怎麼來」。' },
+  { kind: 'cards', section: '安裝', title: '三種交付包怎麼選',
+    cards: [
+      { t: '完整離線安裝版', s: '約 112 MB．三種介面都有',
+        b: ['自帶 Python 安裝檔與全部套件',
+            '安裝過程完全不需要網路',
+            '產線機器、連不上外網的環境用這包',
+            '要執行「安裝.bat」'] },
+      { t: '精簡版', s: '約 0.2 MB．三種介面都有',
+        b: ['安裝時要連得上 python.org 與 PyPI',
+            '檔案小，好傳',
+            '辦公室機器用這包就夠',
+            '要執行「安裝.bat」'] },
+      { t: 'W免安裝版（v0.11 新增）', s: '約 40 MB．只有 W 案',
+        b: ['不用裝 Python、不用裝任何套件',
+            '解壓縮後直接雙擊 BOM_Matcher_W_v0.11.exe',
+            '只需 WebView2，Win11 已內建',
+            '只要 W 案的使用者用這包最省事'] },
+    ] },
 
   { kind: 'steps', section: '安裝', title: '安裝步驟',
     steps: [
@@ -185,12 +191,12 @@ const SLIDES = [
       '下方黑色區塊是執行日誌',
       '按「▶ 執行比對」開始',
     ],
-    warn: '標題列會標出啟動用的 .bat：\nBOM Matcher v0.10　[run_W_webview.bat]' },
+    warn: '標題列會標出啟動方式：\nBOM Matcher v0.11　[run_W_webview.bat] 或 [BOM_Matcher_W_v0.11.exe]' },
 
   { kind: 'shot', section: 'W 案操作', title: '步驟 2　比對結果與人工修正',
     img: SHOTS + 'W_02_rows.png', ar: 1280 / 820,
-    marks: [[1, 300, 233], [2, 318, 304], [3, 390, 432],
-            [4, 580, 304], [5, 290, 530]],
+    marks: [[1, 560, 259], [2, 318, 316], [3, 455, 458],
+            [4, 580, 316], [5, 335, 527]],
     bullets: [
       '表格上方的**篩選鈕**與搜尋框，各自帶列數',
       '**所有欄位都在表格裡改**：RC/EC 是下拉，其餘直接打字',
@@ -239,7 +245,7 @@ const SLIDES = [
 
   { kind: 'shot', section: '雙面板', title: 'Location 查不到 Top/Bot 時',
     img: SHOTS + 'W_06_unknown.png', ar: 1280 / 820,
-    marks: [[1, 722, 259], [2, 300, 344], [3, 862, 356], [4, 1080, 530]],
+    marks: [[1, 1031, 238], [2, 290, 344], [3, 1062, 349], [4, 335, 527]],
     bullets: [
       '表格上方的「Location 未知」篩選鈕可以只看有問題的列',
       '該列**淡紅底**，並在 Location-Bot 欄寫出是哪幾個 Location',
@@ -273,7 +279,7 @@ const SLIDES = [
 
   { kind: 'shot', section: '降壓選料', title: '耐壓低於原始設計的替代料',
     img: SHOTS + 'W_07_r8.png', ar: 1280 / 820,
-    marks: [[1, 683, 254], [2, 300, 344], [3, 530, 344], [4, 520, 791]],
+    marks: [[1, 951, 238], [2, 300, 344], [3, 530, 344], [4, 527, 768]],
     bullets: [
       '表格上方的「需確認」篩選鈕只看這一類，數字是筆數',
       '容值與封裝一致、**DB 耐壓低於設計值**的電容才會進這一類',
@@ -339,25 +345,23 @@ const SLIDES = [
         a: 'S 案的 .py 必須用 streamlit 啟動，一律走 run_S_streamlit.bat。' },
       { q: 'S 案瀏覽器打不開',
         a: '8601 埠被占用。改用 --server.port 8602 另開一個埠。' },
-      { q: 'W 案視窗開不起來',
-        a: '用 run_W_webview_debug.bat 看訊息，多半是缺 Edge WebView2 Runtime。' },
+      { q: 'W 案視窗開不起來（.bat 或 exe）',
+        a: '多半是缺 Edge WebView2 Runtime（Win10 偶爾沒有）。\n.bat 版可用 run_W_webview_debug.bat 看訊息。' },
       { q: '說找不到零件資料庫',
         a: '檢查 xlsx 第 1 列是不是「P/N」與「Description」這兩個字。' },
-      { q: '產出的檔案別的工具打不開',
-        a: 'v0.08 起副檔名強制 .xlsx，不會再有 .xls 的問題。' },
+      { q: 'exe 被防毒擋下 / 啟動要等幾秒',
+        a: '單一 exe 啟動時會先解壓到暫存資料夾，第一次約 3～8 秒；\n被防毒誤判時請 IT 把 exe 加入白名單。' },
     ] },
 
   { kind: 'final', section: '疑難排解', title: `v${VER} 的重點`,
     points: [
-      ['屬性式比對', 'Part 拆成值／耐壓／誤差／電流再比，不再整串找子字串'],
-      ['NC(...) 認得出來', 'SM8008 有 26 項括號式 NC，v0.08 全部漏判'],
-      ['未命中會說原因', '不再靜默留白 —— 格式變了當場就看得到'],
-      ['雙面板 Top / Bot', 'F、G 兩欄＋兩張 PCB 圖＋Location 對不上三層警告'],
-      ['Location 加 (T)/(B)', 'Excel 與 C/D 畫面的 Location-Top / Bot 每個值都冠上 (T) 或 (B)'],
-      ['R8 電容降壓選料', '耐壓不足可選，Description 註記「請再確認」並標紫底'],
-      ['SM8008 命中 26 → 45', '三份 BOM 回歸測試零退步'],
+      ['W免安裝版', '單一 exe，免裝 Python；產出與 .py 版逐格比對 0 差異'],
+      ['W 案啟動修正', 'v0.10 開啟時檔案欄位全是「（未找到）」，已修好'],
+      ['比對邏輯不變', '三份 BOM 回歸測試零退步，SM8008 命中 55、Total Qty 384'],
+      ['沿用 v0.10 全部功能', 'Location (T)/(B)、R8 降壓選料、雙面板 Top / Bot'],
+      ['SOP 截圖全部重拍', 'W 案改用真實視窗擷取，畫面與實際操作一致'],
     ],
-    tail: '完整清單見 changelog_BOM_matcher_v0.10.txt' },
+    tail: '完整清單見 changelog_BOM_matcher_v0.11.txt' },
 ];
 
 module.exports = { VER, DATE, THEME, SLIDES };

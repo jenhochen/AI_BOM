@@ -207,8 +207,8 @@ for (const s of DECK) {
       sl.addText(c.b.map((t, j) => ({ text: t,
         options: { bullet: true, breakLine: j !== c.b.length - 1 } })), {
         x: x + 0.18, y: y + 0.95, w: w - 0.36, h: 2.42, fontSize: 11,
-        color: K.dk2, lineSpacing: 16, paraSpaceAfter: 7,
-        isTextBox: true, margin: 0 });
+        color: K.dk2, lineSpacing: 16, paraSpaceAfter: 7, valign: 'top',
+        isTextBox: true, margin: 0 });   // v0.11：靠上，不要在卡片中間浮著
     });
     sl.addNotes(s.cards.map(c => `${c.t}：${c.s}`).join('；'));
     continue;
@@ -378,6 +378,8 @@ for (const s of DECK) {
 
   if (s.kind === 'final') {
     let y = 1.08;
+    // v0.11：間距依點數算，最後一點不可以壓到 tail（4.35）。v0.10 的 7 點就壓到了
+    const step = Math.min(0.62, (4.25 - 1.08 - 0.32) / Math.max(1, s.points.length - 1));
     s.points.forEach((p, i) => {
       dot(sl, L.M + 0.02, y + 0.11, [K.accent1, K.accent2, K.accent3,
         K.accent4, K.accent5][i % 5], 0.15);
@@ -385,7 +387,7 @@ for (const s of DECK) {
         bold: true, color: K.dk1, isTextBox: true, margin: 0 });
       sl.addText(p[1], { x: L.M + 3.5, y: y + 0.02, w: 5.5, h: 0.32, fontSize: 11.5,
         color: K.dk2, isTextBox: true, margin: 0 });
-      y += 0.62;
+      y += step;
     });
     sl.addText(s.tail, { x: L.M, y: 4.35, w: 9.0, h: 0.3, fontSize: 11,
       color: K.accent5, isTextBox: true, margin: 0 });

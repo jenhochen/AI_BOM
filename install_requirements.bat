@@ -6,10 +6,10 @@ set "PY=python"
 if exist "%~dp0python_home.txt" set /p PY=<"%~dp0python_home.txt"
 set "PYW=pythonw"
 if exist "%~dp0python_home.txt" set "PYW=%PY:python.exe=pythonw.exe%"
-title BOM Matcher v0.10 - Install requirements
+title BOM Matcher v0.11 - Install requirements
 echo.
 echo ================================================
-echo   BOM Matcher v0.10   Install requirements
+echo   BOM Matcher v0.11   Install requirements
 echo   Folder: %~dp0
 echo ================================================
 echo.
@@ -40,8 +40,8 @@ echo ================================================
 echo   Check result:
 echo ================================================
 "%PY%" -c "import pandas,openpyxl,PIL,importlib.metadata as m;print('  [OK] core      pandas',m.version('pandas'),'/ openpyxl',m.version('openpyxl'),'/ pillow',m.version('pillow'))" 2>nul || echo   [--] core      pandas/openpyxl/pillow NOT installed
-"%PY%" -c "import streamlit,importlib.metadata as m;print('  [OK] plan C    streamlit',m.version('streamlit'))" 2>nul || echo   [--] plan C    streamlit NOT installed
-"%PY%" -c "import webview,importlib.metadata as m;print('  [OK] plan D    pywebview',m.version('pywebview'))" 2>nul || echo   [--] plan D    pywebview NOT installed
+"%PY%" -c "import streamlit,importlib.metadata as m;print('  [OK] plan S    streamlit',m.version('streamlit'))" 2>nul || echo   [--] plan S    streamlit NOT installed
+"%PY%" -c "import webview,importlib.metadata as m;print('  [OK] plan W    pywebview',m.version('pywebview'))" 2>nul || echo   [--] plan W    pywebview NOT installed
 echo.
 echo   Next:
 echo     run_CLI.bat           check the core first

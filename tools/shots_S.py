@@ -2,8 +2,8 @@
 重拍 S 案（Streamlit）的 SOP 截圖。
 
 Streamlit 的畫面要互動才看得到（按「執行比對」、切頁籤…），
-但 headless Chrome 的 --screenshot 只能抓靜態頁面，所以這裡用 CDP：
-  1. 開 headless Chrome 並打開 --remote-debugging-port
+但 headless Edge 的 --screenshot 只能抓靜態頁面，所以這裡用 CDP：
+  1. 開 headless Edge 並打開 --remote-debugging-port
   2. 走 WebSocket 下 Runtime.evaluate 點按鈕、Page.captureScreenshot 抓圖
 
 輸出 1440x942，和 W 案的 1280x820 一樣是「原始像素」，
@@ -29,7 +29,9 @@ PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8619
 CDP = 9222
 W, H = 1440, 942
 OUT = Path(r'F:\AI_BOM\docs\sop\shots')
-CHROME = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from browser import browser_exe, EXTRA_FLAGS  # noqa: E402
+CHROME = browser_exe()   # 2026-11-11 起改用 Edge，見 tools/browser.py
 PROFILE = Path(os.environ['TEMP']) / 'bm_shots_profile'
 
 
@@ -40,7 +42,7 @@ def chrome_targets():
 
 async def run():
     proc = subprocess.Popen([
-        CHROME, '--headless=new', '--disable-gpu', '--no-sandbox',
+        CHROME, *EXTRA_FLAGS, '--headless=new', '--disable-gpu', '--no-sandbox',
         '--hide-scrollbars', '--force-device-scale-factor=1',
         f'--window-size={W},{H}', f'--remote-debugging-port={CDP}',
         f'--user-data-dir={PROFILE}', f'http://localhost:{PORT}',
@@ -58,7 +60,7 @@ async def run():
             except Exception:
                 pass
         if not ws_url:
-            print('找不到 Chrome 分頁'); return
+            print('找不到 Edge 分頁'); return
 
         async with websockets.connect(ws_url, max_size=64 * 1024 * 1024) as ws:
             n = 0
@@ -126,13 +128,21 @@ async def run():
             await shot('S_03_rows', 14)
 
             await nav('產出 E-BOM')
-            await js(CLICK.format(t="'確認覆蓋'"))
+            # 刻意「不勾」確認覆蓋：SOP 這頁要呈現同名檔的黃色警告與灰掉的按鈕
+            # （content.js S_04 的 bullets 就是照這個狀態寫的）
             await asyncio.sleep(2)
             await js(CLICK.format(t="'產出 Excel'"))
             await shot('S_04_export', 10)
 
             # 右上角的 ⋮ 也在 Streamlit 自己的元件裡，一樣用座標點
-            await click_xy(1399, 29)
+            # v0.11：Edge 上單純座標點擊不一定打得開，先用 JS 點 stMainMenu 的按鈕
+            opened = await js("(()=>{const b=document.querySelector("
+                              "'[data-testid=\"stMainMenu\"] button');"
+                              "if(b){b.click();return true}return false})()")
+            await asyncio.sleep(1)
+            if not await js("!!document.querySelector('[data-testid=\"stMainMenuList\"],[role=\"menu\"],ul[role=\"listbox\"]')"):
+                await click_xy(1399, 29)
+            print('  menu button found:', opened)
             await shot('S_05_menu', 3)
     finally:
         proc.terminate()

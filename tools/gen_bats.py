@@ -1,5 +1,5 @@
 """
-產生 BOM Matcher v0.10 的 .bat 啟動檔。
+產生 BOM Matcher 的 .bat 啟動檔（版號取自下方 VER）。
 
 三個硬性規則（這次閃退就是全部違反）：
   1. CRLF 換行  —— cmd.exe 用位元組位移讀批次檔，LF-only 會從行中間開始執行
@@ -8,7 +8,7 @@
 """
 from pathlib import Path
 
-VER = "0.10"          # <-- 進版只要改這一行
+VER = "0.11"          # <-- 進版只要改這一行
 DST = Path(r"F:\AI_BOM")
 
 # python_home.txt：離線安裝版的「安裝.bat」會把實際使用的直譯器絕對路徑寫在
@@ -44,12 +44,12 @@ SKIP_STREAMLIT_WELCOME = (
 BATS = {}
 
 BATS["run_CLI.bat"] = HEAD + (
-    "title BOM Matcher v0.10 - CLI\r\n"
+    "title BOM Matcher v@VER@ - CLI\r\n"
     "echo.\r\n"
-    "echo   BOM Matcher v0.10  -  CLI\r\n"
+    "echo   BOM Matcher v@VER@  -  CLI\r\n"
     "echo   Folder: %~dp0\r\n"
     "echo.\r\n"
-    "\"%PY%\" \"%~dp0bom_core_0.10.py\" %*\r\n"
+    "\"%PY%\" \"%~dp0bom_core_@VER@.py\" %*\r\n"
     "if errorlevel 1 (\r\n"
     "  echo.\r\n"
     "  echo   [ERROR] Failed. Run install_requirements.bat first.\r\n"
@@ -59,23 +59,23 @@ BATS["run_CLI.bat"] = HEAD + (
 )
 
 BATS["run_S_streamlit.bat"] = HEAD + SKIP_STREAMLIT_WELCOME + (
-    "title BOM Matcher v0.10 - S / Streamlit\r\n"
+    "title BOM Matcher v@VER@ - S / Streamlit\r\n"
     "echo.\r\n"
-    "echo   BOM Matcher v0.10  -  S  (Streamlit web UI)\r\n"
+    "echo   BOM Matcher v@VER@  -  S  (Streamlit web UI)\r\n"
     "echo   Folder: %~dp0\r\n"
     "echo   URL   : http://localhost:8601\r\n"
     "echo.\r\n"
     "echo   Keep this window open while using the app.\r\n"
     "echo   Close it to stop the server.\r\n"
     "echo.\r\n"
-    "\"%PY%\" -m streamlit run \"%~dp0bom_matcher_S_0.10.py\""
+    "\"%PY%\" -m streamlit run \"%~dp0bom_matcher_S_@VER@.py\""
     " --server.port 8601 --server.headless false\r\n"
     "if errorlevel 1 (\r\n"
     "  echo.\r\n"
     "  echo   [ERROR] Failed to start.\r\n"
     "  echo          - Run install_requirements.bat first, or\r\n"
     "  echo          - Port 8601 may be in use; try:\r\n"
-    "  echo            python -m streamlit run \"%~dp0bom_matcher_S_0.10.py\""
+    "  echo            python -m streamlit run \"%~dp0bom_matcher_S_@VER@.py\""
     " --server.port 8602\r\n"
     ")\r\n"
     "echo.\r\n"
@@ -83,27 +83,27 @@ BATS["run_S_streamlit.bat"] = HEAD + SKIP_STREAMLIT_WELCOME + (
 )
 
 BATS["run_W_webview.bat"] = HEAD + (
-    "title BOM Matcher v0.10 - W / pywebview\r\n"
-    "start \"\" \"%PYW%\" \"%~dp0bom_matcher_W_0.10.py\"\r\n"
+    "title BOM Matcher v@VER@ - W / pywebview\r\n"
+    "start \"\" \"%PYW%\" \"%~dp0bom_matcher_W_@VER@.py\"\r\n"
 )
 
 BATS["run_W_webview_debug.bat"] = HEAD + (
-    "title BOM Matcher v0.10 - W / pywebview (debug)\r\n"
+    "title BOM Matcher v@VER@ - W / pywebview (debug)\r\n"
     "set PYWEBVIEW_LOG=debug\r\n"
     "echo.\r\n"
-    "echo   BOM Matcher v0.10  -  D  (debug mode, console kept open)\r\n"
+    "echo   BOM Matcher v@VER@  -  W  (debug mode, console kept open)\r\n"
     "echo.\r\n"
-    "\"%PY%\" \"%~dp0bom_matcher_W_0.10.py\"\r\n"
+    "\"%PY%\" \"%~dp0bom_matcher_W_@VER@.py\"\r\n"
     "echo.\r\n"
     "echo   Window closed. If there is an error above, please screenshot it.\r\n"
     "pause\r\n"
 )
 
 BATS["install_requirements.bat"] = HEAD + (
-    "title BOM Matcher v0.10 - Install requirements\r\n"
+    "title BOM Matcher v@VER@ - Install requirements\r\n"
     "echo.\r\n"
     "echo ================================================\r\n"
-    "echo   BOM Matcher v0.10   Install requirements\r\n"
+    "echo   BOM Matcher v@VER@   Install requirements\r\n"
     "echo   Folder: %~dp0\r\n"
     "echo ================================================\r\n"
     "echo.\r\n"
@@ -135,11 +135,11 @@ BATS["install_requirements.bat"] = HEAD + (
     "m.version('openpyxl'),'/ pillow',m.version('pillow'))\""
     " 2>nul || echo   [--] core      pandas/openpyxl/pillow NOT installed\r\n"
     "\"%PY%\" -c \"import streamlit,importlib.metadata as m;"
-    "print('  [OK] plan C    streamlit',m.version('streamlit'))\""
-    " 2>nul || echo   [--] plan C    streamlit NOT installed\r\n"
+    "print('  [OK] plan S    streamlit',m.version('streamlit'))\""
+    " 2>nul || echo   [--] plan S    streamlit NOT installed\r\n"
     "\"%PY%\" -c \"import webview,importlib.metadata as m;"
-    "print('  [OK] plan D    pywebview',m.version('pywebview'))\""
-    " 2>nul || echo   [--] plan D    pywebview NOT installed\r\n"
+    "print('  [OK] plan W    pywebview',m.version('pywebview'))\""
+    " 2>nul || echo   [--] plan W    pywebview NOT installed\r\n"
     "echo.\r\n"
     "echo   Next:\r\n"
     "echo     run_CLI.bat           check the core first\r\n"
@@ -154,6 +154,8 @@ for name, body in BATS.items():
     assert not non_ascii, f"{name} 含非 ASCII 字元: {non_ascii}"
     assert "\n" not in body.replace("\r\n", ""), f"{name} 有落單的 LF"
     p = DST / name
+    # v0.11：範本裡的版號改用 @VER@ 占位，真的「進版只改 VER 一行」
+    body = body.replace("@VER@", VER)
     p.write_bytes(body.encode("ascii"))
     b = p.read_bytes()
     crlf = b.count(b"\r\n")

@@ -4,7 +4,7 @@
 流程
   1. preview.py 用 python-pptx 反解正式的 .pptx，產出帶座標的 HTML
      —— 直接讀 pptx，影片不會和投影片走樣
-  2. headless Chrome 一次截下整頁（每張投影片 1920x1080），PIL 切成 33 張
+  2. headless Edge 一次截下整頁（每張投影片 1920x1080），PIL 切成 33 張
   3. 旁白：Windows SAPI 的 zh-TW 語音（Microsoft Hanhan），逐張轉 WAV
   4. ffmpeg（imageio-ffmpeg 自帶，含 libx265）把「一張圖 + 一段旁白」
      串成影片，每張的長度就是該段旁白的長度
@@ -28,8 +28,11 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 HERE = Path(r"F:\AI_BOM")
 SOP = HERE / "docs" / "sop"
 WORK = HERE / "docs" / "_video"
-OUT_MP4 = HERE / "docs" / "BOM_Matcher_v0.10_操作SOP.mp4"
-CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+from build_dist import VER  # noqa: E402  版號只在 build_dist.py 改一處
+OUT_MP4 = HERE / "docs" / f"BOM_Matcher_v{VER}_操作SOP.mp4"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from browser import browser_exe, EXTRA_FLAGS  # noqa: E402
+CHROME = browser_exe()   # 2026-11-11 起改用 Edge，見 tools/browser.py
 W, H = 1920, 1080
 PORT = 8830
 CDP = 9333
@@ -130,7 +133,7 @@ def render_frames(n_slides):
             [sys.executable, "-m", "http.server", str(PORT), "--bind", "127.0.0.1"],
             cwd=WORK, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         chrome = subprocess.Popen([
-            CHROME, "--headless=new", "--disable-gpu", "--no-sandbox",
+            CHROME, *EXTRA_FLAGS, "--headless=new", "--disable-gpu", "--no-sandbox",
             "--hide-scrollbars", "--force-device-scale-factor=1",
             f"--window-size={W // 2},{H // 2}",
             f"--remote-debugging-port={CDP}",
@@ -150,7 +153,7 @@ def render_frames(n_slides):
                 except Exception:
                     pass
             if not ws_url:
-                raise SystemExit("接不上 Chrome 的除錯埠")
+                raise SystemExit("接不上 Edge 的除錯埠")
 
             async with websockets.connect(ws_url, max_size=256 * 1024 * 1024) as ws:
                 seq = 0
@@ -168,7 +171,19 @@ def render_frames(n_slides):
                             return m.get("result", {})
 
                 await cmd("Page.enable")
-                await asyncio.sleep(6)          # 等圖片載完
+                # v0.11：固定等 6 秒在 Edge 上不夠（1.5MB 的 HTML 還沒載完就去數
+                # .slide，數到 0）。改成等到 readyState=complete 且 .slide 數對了。
+                for _ in range(120):
+                    await asyncio.sleep(0.5)
+                    st = await cmd("Runtime.evaluate", {"expression":
+                        "document.readyState+'|'+document.querySelectorAll('.slide').length"
+                        "+'|'+location.href", "returnByValue": True})
+                    v = st["result"].get("value", "")
+                    if v.startswith("complete|") and v.split("|")[1] == str(n_slides):
+                        break
+                else:
+                    print("  頁面狀態：", v)
+                await asyncio.sleep(3)          # 等圖片解碼、__report 跑完
 
                 # preview.py 會把爆框的元素標成紅框（.bad）。
                 # 那是給人看的檢查標記，不可以燒進影片 —— 先確認沒有問題，
@@ -198,14 +213,30 @@ def render_frames(n_slides):
                     raise SystemExit(f"HTML 裡有 {len(boxes)} 張投影片，"
                                      f"但 content.js 算出 {n_slides} 張")
 
+                # v0.11：Edge 對視窗外的區域不一定畫好了，直接 clip 會截到
+                # 半張或全白（實測 33 張裡有 2 張）。每張先捲過去、等一下，
+                # 截完檢查是不是「整張同一個顏色」，是就重截。
+                from PIL import Image, ImageStat
+                import io
                 for i, b in enumerate(boxes, 1):
-                    shot = await cmd("Page.captureScreenshot", {
-                        "format": "png",
-                        "captureBeyondViewport": True,
-                        "clip": {"x": b["x"], "y": b["y"], "width": b["w"],
-                                 "height": b["h"], "scale": W / b["w"]}})
                     f = WORK / f"f{i:03d}.png"
-                    f.write_bytes(base64.b64decode(shot["data"]))
+                    for attempt in range(4):
+                        await cmd("Runtime.evaluate", {"expression":
+                            f"window.scrollTo(0, {b['y']})"})
+                        await asyncio.sleep(0.4 + attempt * 0.6)
+                        shot = await cmd("Page.captureScreenshot", {
+                            "format": "png",
+                            "captureBeyondViewport": True,
+                            "clip": {"x": b["x"], "y": b["y"], "width": b["w"],
+                                     "height": b["h"], "scale": W / b["w"]}})
+                        data = base64.b64decode(shot["data"])
+                        sd = ImageStat.Stat(Image.open(io.BytesIO(data)).convert("L")).stddev[0]
+                        if sd >= 8:
+                            break
+                        print(f"  第 {i} 張截到空白（stddev={sd:.1f}），重截")
+                    else:
+                        raise SystemExit(f"第 {i} 張投影片一直截到空白")
+                    f.write_bytes(data)
                     frames.append(f)
         finally:
             chrome.terminate()

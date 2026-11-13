@@ -5,18 +5,18 @@ Stanley（ADATA Technology）開發的 Python Windows 工具，讀取 Altium 格
 
 ---
 
-## 目前版本：v0.10
+## 目前版本：v0.11
 
-v0.07 起拆成「一個核心 + 兩套前端」。v0.06 的 tkinter GUI 已由 C / D 兩案取代。
+v0.07 起拆成「一個核心 + 兩套前端」。v0.11 起 W 案另有免安裝的單一 exe。
 
-| 檔案 | 角色 | 行數 |
-|---|---|---|
-| `bom_core_0.07.py` | 核心邏輯（解析／比對／Knowledge／Excel 輸出）＋ CLI | ~700 |
-| `bom_matcher_C_0.07.py` | **S 案**：Streamlit 網頁版 | ~330 |
-| `bom_matcher_D_0.07.py` | **W 案**：pywebview 原生視窗版（HTML 內嵌） | ~640 |
-| `run_S_streamlit.bat` | S 案啟動捷徑（port 8601） | — |
-| `run_W_webview.bat` | W 案啟動捷徑 | — |
-| `.streamlit\config.toml` | S 案主題（primaryColor `#4F46E5`） | — |
+| 檔案 | 角色 |
+|---|---|
+| `bom_core_0.11.py` | 核心邏輯（解析／比對／Knowledge／Excel 輸出）＋ CLI |
+| `bom_matcher_S_0.11.py` | **S 案**：Streamlit 網頁版 |
+| `bom_matcher_W_0.11.py` | **W 案**：pywebview 原生視窗版（HTML 內嵌） |
+| `dist\exe\BOM_Matcher_W_v0.11.exe` | **W 案免安裝版**（`tools\build_exe.py` 產出，不進版控） |
+| `run_*.bat` ×4 ＋ `install_requirements.bat` | 啟動捷徑，用 `tools\gen_bats.py` 產生 |
+| `.streamlit\config.toml` | S 案主題（primaryColor `#4F46E5`、toolbarMode viewer） |
 
 **版本規則：** 每次進版 +0.01，程式檔名含版號。
 
@@ -24,14 +24,15 @@ v0.07 起拆成「一個核心 + 兩套前端」。v0.06 的 tkinter GUI 已由 
 ```
 雙擊 run_S_streamlit.bat        # S 案：瀏覽器 http://localhost:8601
 雙擊 run_W_webview.bat          # W 案：原生視窗
+雙擊 BOM_Matcher_W_v0.11.exe    # W 案免安裝版（免 Python）
 
-python bom_core_0.07.py                    # CLI 全自動
-python bom_core_0.07.py -o out.xlsx
-python bom_core_0.07.py BOM.txt db.xlsx -k Knowledge.xlsx -p pcb.jpg
-python bom_core_0.07.py --no-split         # 關閉替代料拆列
+python bom_core_0.11.py                    # CLI 全自動
+python bom_core_0.11.py -o out.xlsx
+python bom_core_0.11.py BOM.txt db.xlsx -k Knowledge.xlsx -p pcb.jpg
+python bom_core_0.11.py --no-split         # 關閉替代料拆列
 
-python bom_matcher_D_0.07.py --dump-html   # 輸出 W 案 UI 的 HTML
-python bom_matcher_D_0.07.py --selftest    # 自動跑完流程後關閉（驗證用）
+python bom_matcher_W_0.11.py --dump-html   # 輸出 W 案 UI 的 HTML
+python bom_matcher_W_0.11.py --selftest    # 自動跑完流程後關閉（驗證用；exe 也吃這個參數）
 ```
 
 ### 依賴套件
@@ -39,10 +40,12 @@ python bom_matcher_D_0.07.py --selftest    # 自動跑完流程後關閉（驗�
 pip install pandas openpyxl pillow                # 核心
 pip install streamlit streamlit-option-menu       # S 案
 pip install pywebview                             # W 案
+# 只有開發／打包機要裝：
+pip install pyinstaller python-pptx imageio-ffmpeg websockets
 ```
-實測環境：Python 3.14.4 / pandas 3.0.3 / openpyxl 3.1.5 / streamlit 1.62.0 / pywebview 6.2.1
+實測環境：Python 3.14.4 / pandas 3.0.6 / openpyxl 3.1.5 / streamlit 1.66.0 / pywebview 6.2.1 / pyinstaller 6.22.3 / Node.js 26.13.0
 
-> 前端檔名含小數點，無法用一般 import，兩案皆以 `importlib` 明確載入 `bom_core_0.07.py`。改版號時記得同步兩個前端裡的路徑字串。
+> 前端檔名含小數點，無法用一般 import，兩案皆以 `importlib` 明確載入 `bom_core_0.XX.py`。改版號時記得同步兩個前端裡的路徑字串（W 案有凍結／非凍結兩處 `_CORE`）。
 
 ---
 
@@ -210,9 +213,65 @@ v0.07 起 **逐列比對**（每個拆出來的 P/N 各自比對自己的描述�
 
 ---
 
+## v0.11 已完成（2026-11-13）
+
+詳情見 `changelog_BOM_matcher_v0.11.txt`。**比對邏輯完全沒動**（regress 零退步）。
+
+| 項目 | 結果 |
+|---|---|
+| W 案免安裝版 | `tools\build_exe.py` → 單一 exe 約 43 MB。乾淨路徑、PATH 無 Python：selftest 55 / 384，Excel 與 .py 版**逐格 0 差異** |
+| W 案啟動 bug（v0.10 就有） | 開啟時檔案欄位全「（未找到）」，已修 |
+| 第三種交付包 | `dist\BOM_Matcher_v0.11_W免安裝版\`，也進 `_上傳Teams` |
+| 截圖工具 | 改用 Edge（`tools\browser.py`）；W 案新增 `tools\shots_W.py` 拍真實視窗 |
+| SOP | 截圖全部重拍、三種交付包、exe 的 Q&A；影片重做 |
+| gen_bats | 範本版號改 `@VER@`，真的只改 `VER` 一行 |
+
+### W 案 exe 的坑（改 W 或 core 前先看）
+
+1. **onefile 的 `__file__` 在暫存目錄**（`%TEMP%\_MEIxxxx`，關掉就消失）。
+   core / W 的 `APP_DIR` 凍結時用 `sys.executable` 的目錄；內嵌資源（LOGO、core 本身）從 `sys._MEIPASS` 讀。
+   不處理的話：找不到 TXT\ ExcelDB\，輸出寫進暫存目錄然後跟著消失。
+2. **core 是 importlib 從檔案載入的，PyInstaller 分析不到。**
+   `build_exe.py` 用 `--add-data` 內嵌 `bom_core_0.XX.py`，pandas/openpyxl/PIL 列 hidden-import。
+   core 新增任何第三方 import，**要同步加進 `build_exe.py` 的 `HIDDEN`**，否則 exe 啟動就 ImportError。
+3. **視窗版 exe 的 stdout 是 cp950 的空殼**，`print('✓')` 會彈「Unhandled exception in script」把程式打斷。
+   W 檔頭把 stdout/stderr 接到 devnull 或強制 UTF-8，不要拿掉。
+4. **onefile 會起兩個同名程序**（解壓用的父程序沒有視窗）。要找視窗請用標題找，不要用 Start-Process 回傳的 PID。
+5. 使用者機器需要 **Edge WebView2 Runtime**（Win11 內建），這是系統元件，exe 無法內含。
+6. exe 吃 `--selftest`，在 exe 旁邊寫 `_selftest_D.txt`（視窗版沒有 stdout）。
+
+### `#detail` bug：selftest 繞過畫面，就驗不到畫面
+
+v0.10 甲案刪了右側明細面板，`renderRows()` 卻還在「尚未比對」時寫 `#detail` → TypeError →
+頁面腳本中斷，`pywebviewready` 監聽器根本沒註冊。後端其實都找到了，畫面卻全是「（未找到）」。
+按「▶ 執行比對」還能跑（函式宣告會提升），所以沒人發現；selftest 直接呼叫 `doMatch()` 也繞過了；
+SOP 的 W_01 用假 API 拍，把壞掉的畫面當正常畫面收進 SOP。
+
+教訓：
+- 刪 UI 元件時 `grep` 它的 id，所有引用一起清
+- selftest 現在第一行是 `boot = {"booted":true,"txts":3,"bom":true}`，**不是 true 就是壞了**
+- 前端腳本有疑慮時：`--dump-html` 後用瀏覽器開，`(0,eval)(script)` 重跑一次就能拿到錯誤行號
+
+### 新機器第一次設定（2026-11-11 實際做過）
+
+F:\ 是從另一台機器帶過來的，Windows 帳號 SID 不同：
+```bash
+git config --global --add safe.directory F:/AI_BOM          # 否則 git 報 dubious ownership
+python -m pip install --no-index --find-links dist/wheels_cache -r requirements.txt   # 版本與交付包一致
+python -m pip install pyinstaller python-pptx imageio-ffmpeg    # 打包、SOP 預覽、影片
+winget install --id OpenJS.NodeJS.LTS -e --source winget        # SOP build.js；要加 --source winget
+```
+另外 `%USERPROFILE%\.streamlit\credentials.toml` 要先建（見 .bat 一節）。
+Node 剛裝完，舊的 shell 裡 PATH 還沒有它，直接用 `"C:\Program Files\nodejs\node.exe"`。
+
+⚠ 這台機器的 Git Bash heredoc 會吃掉反斜線（`\\` 變 `\`、regex 也壞），
+要寫含反斜線的 Python 就寫成 .py 檔再執行，不要用 `python - <<'EOF'`。
+
+---
+
 ## v0.10 已完成（2026-10-21）
 
-待辦 T1–T5 全部做完，詳情見 `changelog_BOM_matcher_v0.10.txt`。重點：
+待辦 T1–T5 全部做完，詳情見 `old\changelog_BOM_matcher_v0.10.txt`（v0.11 的 changelog 也完整保留）。重點：
 
 | 項目 | 結果 |
 |---|---|
@@ -279,16 +338,20 @@ v0.10 實測發現**不夠**：widget 值綁在「widget 身分」上，同一�
 
 教訓：版面 QA 通過 ≠ 看得到。HTML 版至少要實際截一頁有截圖的來看。
 
-### 截圖怎麼重拍（不必開真的視窗）
+### 截圖怎麼重拍（v0.11 起）
 
-- **W 案**：載入 `bom_matcher_W_0.10.py`，用 `Api().run_match()` 拿實際狀態，
-  `page_html()` 加一段假的 `window.pywebview.api`（回傳同一份 state），
-  用 headless Chrome 截圖。舊截圖含 31px 的 Windows 標題列，
-  SOP 的 marks 座標是照那個算的 —— 重拍時把舊圖的標題列貼回去，marks 就不用改。
-- **S 案**：`streamlit run` 起一個實例，用 Chrome DevTools Protocol 點按鈕後截圖。
-  寬度用 1440（1280 時「瀏覽…」按鈕會折成兩行），SOP 的 `ar` 改成 `1440 / 942`。
-- ⚠️ 用 Chrome，不要用 Edge headless —— Edge 會在畫面右緣疊一個浮動圖示，
-  不在 DOM 裡，CSS 藏不掉。
+- **W 案**：`python tools/shots_W.py` —— 開**正式視窗**，`evaluate_js` 切頁，
+  Win32 `PrintWindow(PW_RENDERFULLCONTENT)` 擷取整個視窗（含真的標題列，被擋住也拍得到）。
+  輸出 1280x820，與 SOP marks 座標同一個尺寸。`--out DIR` 可以先拍到別處檢查。
+  ⚠ v0.10 以前用「假 API ＋ headless 瀏覽器」拍，拍不到真的啟動流程 —— 見上面的 `#detail` bug。
+- **S 案**：`streamlit run` 起一個實例（port 8619），`python tools/shots_S.py 8619` 用 CDP 點按鈕截圖。
+  寬度 1440（1280 時「瀏覽…」按鈕會折成兩行）。S_04 刻意**不勾**確認覆蓋（SOP 照灰按鈕狀態寫）。
+- **瀏覽器一律 Edge**（`tools\browser.py`，`BM_BROWSER` 可覆蓋）。
+  ⚠ 一定走 CDP 的 `Page.captureScreenshot`：用 `--screenshot` 參數時 Edge 會在右緣疊一個浮動圖示，
+  不在 DOM 裡、CSS 藏不掉。
+  ⚠ Edge 對視窗外的區域不一定畫好了，clip 截圖會截到半張或全白 ——
+  `sop_video.py` 每張先捲過去再截，並檢查整張同色就重截。
+- 截完一定要把 marks 疊上去看：版面一動（例如篩選鈕折行）座標就偏了。
 
 ---
 
@@ -363,12 +426,14 @@ python tools/regress.py        # v0.08 vs v0.09，三份 BOM，任一退步就�
 |---|---|---|---|
 | `dist\BOM_Matcher_v<VER>_完整離線安裝版` | ~113 MB | 精簡版 ＋ `python\`（Python 安裝檔）＋ `wheels\`（47 個離線套件） | 產線機器、連不上外網 |
 | `dist\BOM_Matcher_v<VER>_精簡版` | ~0.6 MB | 程式 ＋ 範例資料 ＋ SOP | 辦公室機器，安裝時上網抓套件 |
+| `dist\BOM_Matcher_v<VER>_W免安裝版` | ~40 MB | W 案 exe ＋ 範例資料 ＋ SOP ＋ 使用說明.txt | 只用 W 案、不想裝 Python（v0.11 起） |
 
 兩包都含 `安裝.bat`、`安裝說明.txt`、`docs\*_操作SOP.pptx`。
 程式本體與範例資料完全相同，差別只在「套件怎麼來」。
 
 ```bash
-python tools/build_dist.py                   # 產出兩包
+python tools/build_dist.py                   # 產出三包（會先跑 build_exe.py）
+python tools/build_dist.py --no-exe          # 沿用 dist\exe 裡現有的 exe
 python tools/build_dist.py --refresh-wheels  # 先重抓 wheels 再打包
 python tools/build_dist.py --slim-only       # 只要精簡版
 ```
@@ -381,7 +446,7 @@ python tools/build_dist.py --slim-only       # 只要精簡版
 
 ## 操作 SOP
 
-產出物：`docs\BOM_Matcher_v<VER>_操作SOP.pptx`（24 頁）
+產出物：`docs\BOM_Matcher_v<VER>_操作SOP.pptx`（v0.11：33 頁含目錄）
 
 | 檔案 | 作用 |
 |---|---|
@@ -389,14 +454,16 @@ python tools/build_dist.py --slim-only       # 只要精簡版
 | `docs/sop/layout.js` | 投影片尺寸與邊界常數 |
 | `docs/sop/build.js` | 產出 .pptx（pptxgenjs） |
 | `docs/sop/preview.py` | **從產出的 .pptx 反向解析實際座標**畫成 preview.html |
-| `docs/sop/shots/` | 9 張實機截圖（W 案用 PrintWindow 擷取視窗，非螢幕截圖） |
+| `docs/sop/shots/` | 12 張截圖：W_01～07（`tools/shots_W.py`）、S_01～05（`tools/shots_S.py`） |
 
 ```bash
-cd docs/sop && npm install pptxgenjs     # 第一次
-node build.js
-node <pptx-skill>/scripts/apply_theme.js ../BOM_Matcher_v0.08_操作SOP.pptx theme.tmp.json
-python preview.py                        # 再用瀏覽器開 preview.html
+cd docs/sop && npm install            # 第一次（package.json 只有 pptxgenjs）
+node build.js                         # → docs\BOM_Matcher_v<VER>_操作SOP.pptx
+# pptx skill 的兩支腳本（路徑見 skill 說明）：
+NODE_PATH=<docs/sop/node_modules> node <pptx-skill>/scripts/apply_theme.js ../BOM_Matcher_v<VER>_操作SOP.pptx theme.tmp.json
+python <pptx-skill>/scripts/office/validate.py ../BOM_Matcher_v<VER>_操作SOP.pptx   # 必須 All validations PASSED
 ```
+apply_theme.js 找不到 pptxgenjs 時要設 `NODE_PATH` 指到 `docs/sop/node_modules`。
 
 `preview.py` 刻意**不是**重畫一份版面 —— 重畫的預覽只能證明「我以為的座標」
 沒爆框，證明不了 pptx 裡真正的座標。它直接讀 pptx 的 EMU 座標畫成 HTML，
@@ -442,7 +509,7 @@ python preview.py                        # 再用瀏覽器開 preview.html
 
 ## 待辦（下一版，等 Stanley 指定版號才動工）
 
-v0.10 的 T1–T5 全部完成，目前沒有待辦。
+v0.11 完成，目前沒有待辦。
 
 ### 待決定項目
 
@@ -520,11 +587,23 @@ SOP 第 14 頁「右上角的選單（三個點）」照這兩項寫。
 
 ---
 
-### 程式進版必須同步更新 SOP（2026-10-20 起強制）
+### ★ SOP 改成「進版時先問」（2026-11-13 起，取代舊規則）
 
-版號一動，SOP 就要跟著走完這條流程，**不可以只改程式不改 SOP**：
+**SOP 投影片（含影片）不再隨每次改版自動更新。**
+每次進版開工前，先問 Stanley：「這一版要不要更新 SOP？」
 
-1. 重新截圖：介面有變的頁面重拍，放進 `docs\sop\shots\`
+- **要** → 照下面的流程走完（截圖、content.js、build、validator、影片）
+- **不要** → SOP 維持上一版，不重拍、不重建、不重做影片。
+  `docs\` 裡留著最新一份 SOP（檔名是它當時的版號，例如 v0.11），
+  `build_dist.py` 會自動拿 `docs\` 裡版號最大的那份 SOP 放進交付包與 `_上傳Teams`。
+
+這條取代了以前的「進版必須同步更新 SOP」與「SOP 必須和目前的程式一致」——
+兩條都是 2026-10 訂的，Stanley 在 2026-11-13 改成「進版時詢問」。
+介面有改但這版不更新 SOP 時，在 changelog 註明「SOP 未更新」，方便之後補。
+
+### SOP 更新流程（決定要更新時才做）
+
+1. 重新截圖：`python tools/shots_W.py`、`python tools/shots_S.py <port>`，放進 `docs\sop\shots\`
 2. 改文字：只動 `docs\sop\content.js`（`VER` / `DATE` 也要改）
 3. 重建：`node docs/sop/build.js` → 產出 `docs\BOM_Matcher_vX.XX_操作SOP.pptx`
 4. 驗證：pptx validator 必須 All validations PASSED
@@ -538,14 +617,15 @@ SOP 第 14 頁「右上角的選單（三個點）」照這兩項寫。
 OBM/SBM HW RD  ›  03_AI Tool.蜂鳥助手  ›  已共用
 ```
 
-要放的兩個檔：
+要放的三個檔：
 
 | 檔案 | 來源 |
 |---|---|
 | `BOM_Matcher_vX.XX_完整離線安裝版.zip` | `dist\` |
+| `BOM_Matcher_vX.XX_W免安裝版.zip` | `dist\`（v0.11 起） |
 | `BOM_Matcher_vX.XX_操作SOP.pptx` | `docs\` |
 
-`tools\build_dist.py` 跑完會把這兩個檔複製到 `dist\_上傳Teams\`，直接整個資料夾拖進瀏覽器就好。
+`tools\build_dist.py` 跑完會把這三個檔複製到 `dist\_上傳Teams\`，直接整個資料夾拖進瀏覽器就好。
 
 ⚠️ **目前只能手動拖曳。** 那個文件庫沒有同步到本機（OneDrive 沒在跑、
 沒有任何同步資料夾），所以程式碰不到它。
@@ -606,35 +686,30 @@ SOP 的截圖以 **W 案（pywebview）** 為主，S 案只放差異頁。
 根目錄與 `docs\` 只保留**目前版本**的檔案，其餘全部搬到 `old\`：
 
 ```
-根目錄   bom_core_0.10.py  bom_matcher_S_0.10.py  bom_matcher_W_0.10.py
-         changelog_BOM_matcher_v0.10.txt  HANDOVER_bom_matcher.md
+根目錄   bom_core_0.11.py  bom_matcher_S_0.11.py  bom_matcher_W_0.11.py
+         changelog_BOM_matcher_v0.11.txt  HANDOVER_bom_matcher.md
          requirements.txt  五個 .bat  pcb.jpg  adata.png
-docs\    BOM_Matcher_v0.10_操作SOP.pptx
+docs\    BOM_Matcher_v0.11_操作SOP.pptx / .mp4 / .srt
 ```
 
 搬動後記得檢查有沒有程式還指著舊路徑 ——
-`tools
-egress.py` 會載入前一版的 core 做回歸，路徑要跟著改成 `old/`。
+`tools\regress.py` 會載入前一版的 core 做回歸，路徑要跟著改成 `old/`。
+（這行在 v0.10 版的 HANDOVER 裡曾被寫成 `tools` 換行 `egress.py` —— 字串裡的 `\r` 被當成跳脫字元吃掉了。）
 
 ---
 
-### ★ SOP 必須和目前的程式一致（2026-10-21 起）
+### SOP 和程式不一致時（2026-11-13 起改為「進版時詢問」）
 
-**原則：只要是確定且修改完成的，就同步改 SOP。**
-SOP 不是「改版時才整理」的文件，它隨時都要能當作程式的現況描述 ——
-任何時候打開 SOP，上面寫的、畫的都要跟實際跑出來的一樣。
-
-判斷標準很簡單：**SOP 上的敘述或截圖只要和實際不符，就是該改了。**
-不必等到版號變動，也不分大改小改。
-
-常見的算：
+~~原則：只要是確定且修改完成的，就同步改 SOP。~~（2026-10-21 訂，**2026-11-13 已取消**）
+現在 SOP 只在 Stanley 同意更新的那一版才動，見上面「SOP 改成進版時先問」。
+詢問時把「這版有哪些地方會讓 SOP 和實際不符」列出來給他判斷，常見的有：
 - 按鈕／面板搬位置（例：日誌從右欄搬到下方）
 - 新增互動（例：滑過 Location 欄跳氣泡、點列放大）
 - 改名（例：C 案 → S 案）
 - 新增設定項（例：字體大小／縮放比例）
 
-流程照「程式進版必須同步更新 SOP」那一節：
-重拍截圖 → 改 content.js → build.js → validator → 重建交付包。
+同意更新時，流程照「SOP 更新流程」那一節：
+重拍截圖 → 改 content.js → build.js → validator → 影片 → 重建交付包。
 `build.js` 會檢查 marks 數 == bullets 數，漏掉會直接中斷。
 
 ---
@@ -650,7 +725,7 @@ SOP 不是「改版時才整理」的文件，它隨時都要能當作程式的�
 1. 用 HTML 模擬各方案的畫面，放在暫存目錄
 2. `python -m http.server <port>` 起一個本機伺服器
 3. headless Chrome 截圖：
-   `chrome.exe --headless=new --window-size=W,H --screenshot=out.png http://127.0.0.1:<port>/x.html`
+   用 Edge 走 CDP（參考 `tools\shots_S.py`）；不要用 `msedge --screenshot`，右緣會多一個浮動圖示
 4. 存到 `screenshot\`，檔名帶版號與用途
 
 W 案的真實截圖用 `tools\shots_S.py` 的 CDP 作法；
@@ -709,21 +784,27 @@ S 案（Streamlit）一定要用 CDP，因為畫面要互動才出得來。
 
 ```
 F:\AI_BOM\
-  bom_core_0.07.py                 核心 + CLI
-  bom_matcher_C_0.07.py            S 案 Streamlit
-  bom_matcher_D_0.07.py            W 案 pywebview
-  run_S_streamlit.bat              S 案捷徑
-  run_W_webview.bat                W 案捷徑
-  .streamlit\config.toml           S 案主題
-  changelog_BOM_matcher_v0.07.txt  完整版本歷史（v0.01–v0.07）
-  HANDOVER_bom_matcher.md          本文件
-  bom_matcher_0.06.py              上一版（tkinter，保留備援）
-  changelog_BOM_matcher_v0.06.txt
-  pcb.jpg                          PCB 圖片
-  TXT\                             Altium Text BOM
-  ExcelDB\                         零件資料庫（BOM_20260525.xlsx）
-  screenshot\                      PCB 圖片備援位置
-  output\                          產出的 E-BOM
-  demo document\                   ★ E-BOM 版面的視覺參考來源
-  old\                             v0.01–v0.05
+  bom_core_0.11.py / bom_matcher_S_0.11.py / bom_matcher_W_0.11.py
+  run_CLI.bat  run_S_streamlit.bat  run_W_webview.bat  run_W_webview_debug.bat  install_requirements.bat
+  changelog_BOM_matcher_v0.11.txt  HANDOVER_bom_matcher.md  requirements.txt
+  pcb.jpg  adata.png  Layout and BOM Knowledge_20260624.xlsx
+  .streamlit\config.toml
+  TXT\  ExcelDB\  screenshot\  output\          輸入／輸出（output 不進版控）
+  docs\BOM_Matcher_v0.11_操作SOP.pptx / .mp4 / .srt
+  docs\sop\                                     SOP 產生器（content.js / build.js / shots\）
+  tools\
+    build_dist.py   三種交付包 + _上傳Teams
+    build_exe.py    W 案 exe（PyInstaller onefile）
+    gen_bats.py     .bat 產生器（CRLF／ASCII）
+    regress.py      前一版 vs 這一版回歸
+    shots_W.py      W 案 SOP 截圖（真實視窗）
+    shots_S.py      S 案 SOP 截圖（CDP）
+    sop_video.py    SOP 影片
+    browser.py      Edge 路徑與旗標（截圖工具共用）
+  dist\                                         交付包（不進版控）
+    exe\BOM_Matcher_W_v0.11.exe
+    BOM_Matcher_v0.11_完整離線安裝版 / 精簡版 / W免安裝版（+ .zip）
+    _上傳Teams\  wheels_cache\
+  demo document\                                ★ E-BOM 版面的視覺參考來源
+  old\                                          舊版程式、changelog、SOP
 ```
