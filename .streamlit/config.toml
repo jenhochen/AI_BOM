@@ -5,6 +5,11 @@ secondaryBackgroundColor = "#F0F2F6"
 textColor               = "#31333F"
 font                    = "sans serif"
 
+[client]
+# 藏掉右上角的 Deploy 與開發者選項（Rerun / Clear cache）。
+# Deploy 是發佈到 Streamlit 雲端，對內部工具沒有用途，還有外流資料的風險。
+toolbarMode = "viewer"
+
 [browser]
 gatherUsageStats = false
 
